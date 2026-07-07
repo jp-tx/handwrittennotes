@@ -14,7 +14,9 @@
     --mono: 'Cascadia Code', 'Fira Mono', 'Consolas', monospace;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+
+input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
 
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); font-size: clamp(12px, 1.2vw, 15px); }
 
@@ -104,7 +106,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 
 /* Canvas editor */
 .canvas-editor-wrap { display: flex; flex-direction: column; height: 100%; }
-.canvas-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; position: relative; z-index: 10; }
+.canvas-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; position: relative; z-index: 10; touch-action: manipulation; }
 .tool-groups { display: flex; gap: 4px; }
 .tool-group { position: relative; }
 .group-toggle { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.78em; white-space: nowrap; }
