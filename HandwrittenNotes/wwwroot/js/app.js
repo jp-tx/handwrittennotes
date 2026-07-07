@@ -1,4 +1,16 @@
 /* global sidebar + auth logic */
+
+// Prevent iOS long-press copy/paste dialog and accidental text selection
+// everywhere except actual text inputs (textarea, input, contenteditable).
+(function () {
+    function isTextTarget(el) {
+        const tag = el.tagName;
+        return tag === 'TEXTAREA' || tag === 'INPUT' || el.isContentEditable;
+    }
+    document.addEventListener('contextmenu', e => { if (!isTextTarget(e.target)) e.preventDefault(); });
+    document.addEventListener('selectstart', e => { if (!isTextTarget(e.target)) e.preventDefault(); });
+})();
+
 (function () {
     'use strict';
 
