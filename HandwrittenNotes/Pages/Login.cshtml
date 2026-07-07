@@ -1,0 +1,28 @@
+@page
+@model LoginModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — HandwrittenNotes</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body class="login-body">
+    <div class="login-card">
+        <h1 class="login-title">HandwrittenNotes</h1>
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <p class="login-error">@Model.Error</p>
+        }
+        <form method="post" class="login-form">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autofocus required />
+            <button type="submit" class="btn-primary">Sign in</button>
+        </form>
+    </div>
+</body>
+</html>

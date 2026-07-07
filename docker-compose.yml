@@ -1,0 +1,13 @@
+services:
+  handwrittennotes:
+    build:
+      context: ./HandwrittenNotes
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - APP_PASSWORD=notes123
+      - DATA_PATH=/data
+    volumes:
+      - ./notes:/data

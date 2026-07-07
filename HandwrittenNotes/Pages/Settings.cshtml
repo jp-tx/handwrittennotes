@@ -1,0 +1,90 @@
+@page
+@model SettingsModel
+@{
+    ViewData["Title"] = "Settings";
+}
+<div class="settings-wrap">
+    <h2>Settings</h2>
+
+    <section class="settings-section">
+        <h3>Default Canvas Size</h3>
+        <p class="settings-hint">Applied when creating new BMP pages. Existing pages are not affected.</p>
+        <div class="canvas-size-options" id="canvasSizeOptions">
+            <label class="size-option">
+                <input type="radio" name="canvasSize" value="1920x1080" />
+                <span>Full HD Landscape <em>1920 &times; 1080</em></span>
+            </label>
+            <label class="size-option">
+                <input type="radio" name="canvasSize" value="1080x1920" />
+                <span>Full HD Portrait <em>1080 &#xD7; 1920</em></span>
+            </label>
+            <label class="size-option">
+                <input type="radio" name="canvasSize" value="1654x2339" />
+                <span>A4 @@ 200 DPI <em>1654 &times; 2339</em></span>
+            </label>
+            <label class="size-option">
+                <input type="radio" name="canvasSize" value="2480x3508" />
+                <span>A4 @@ 300 DPI <em>2480 &times; 3508</em></span>
+            </label>
+            <label class="size-option">
+                <input type="radio" name="canvasSize" value="1080x1080" />
+                <span>Square HD <em>1080 &times; 1080</em></span>
+            </label>
+            <label class="size-option">
+                <input type="radio" name="canvasSize" value="3840x2160" />
+                <span>4K Landscape <em>3840 &times; 2160</em></span>
+            </label>
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h3>Session Timeout</h3>
+        <p class="settings-hint">Takes effect on next login.</p>
+        <select id="sessionDays" class="settings-select">
+            <option value="1">1 day</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="365">Never (1 year)</option>
+        </select>
+    </section>
+
+    <div class="settings-actions">
+        <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+        <span class="save-indicator" id="settingsSaveIndicator"></span>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(async () => {
+    const r = await fetch('/api/settings');
+    const s = await r.json();
+
+    const w = s.defaultCanvasWidth, h = s.defaultCanvasHeight;
+    const radio = document.querySelector(`input[name="canvasSize"][value="${w}x${h}"]`);
+    if (radio) radio.checked = true;
+    else document.querySelector('input[name="canvasSize"]').checked = true;
+
+    const sel = document.getElementById('sessionDays');
+    sel.value = String(s.sessionDays);
+    if (!sel.value) sel.value = '30';
+
+    document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+        const checked = document.querySelector('input[name="canvasSize"]:checked');
+        const [cw, ch] = checked.value.split('x').map(Number);
+        const days = parseInt(sel.value, 10);
+
+        const resp = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ defaultCanvasWidth: cw, defaultCanvasHeight: ch, sessionDays: days })
+        });
+
+        const ind = document.getElementById('settingsSaveIndicator');
+        ind.textContent = resp.ok ? 'Saved' : 'Error saving';
+        ind.className = 'save-indicator ' + (resp.ok ? 'saved' : 'error');
+        setTimeout(() => { ind.textContent = ''; ind.className = 'save-indicator'; }, 2000);
+    });
+})();
+</script>
+}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HandwrittenNotes</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header class="app-header">
+        <button class="btn-icon hamburger" id="sidebarToggle" title="Toggle sidebar">&#9776;</button>
+        <span class="app-title">HandwrittenNotes</span>
+        <div class="header-actions">
+            <a href="/Settings" class="btn-icon" title="Settings">&#9881;</a>
+            <button class="btn-text" id="logoutBtn">Logout</button>
+        </div>
+    </header>
+
+    <div class="shell">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <button class="btn-primary btn-new-notebook" id="newNotebookBtn">+ New Notebook</button>
+            </div>
+            <div class="notebook-list" id="notebookList">
+                <span class="sidebar-loading">Loading&hellip;</span>
+            </div>
+        </nav>
+
+        <main class="editor-area" id="editorArea">
+            @RenderBody()
+        </main>
+    </div>
+
+    <div class="modal-overlay hidden" id="modalOverlay">
+        <div class="modal" id="modal">
+            <p id="modalMessage"></p>
+            <input type="text" id="modalInput" class="modal-input" />
+            <div class="modal-actions">
+                <button class="btn-primary" id="modalConfirm">OK</button>
+                <button class="btn-text" id="modalCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/app.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

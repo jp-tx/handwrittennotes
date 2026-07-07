@@ -1,0 +1,95 @@
+@page "/notebooks/{notebookId}/pages/{pageId}"
+@model EditorModel
+@{
+    ViewData["Title"] = Model.PageName;
+}
+
+@if (Model.PageType == "txt")
+{
+    <div class="text-editor-wrap">
+        <div class="editor-toolbar">
+            <span class="page-name-display">@Model.PageName</span>
+            <span class="save-indicator" id="saveIndicator"></span>
+        </div>
+        <textarea id="textEditor" class="text-editor" spellcheck="false"
+                  data-page-id="@Model.PageId" data-notebook-id="@Model.NotebookId"></textarea>
+    </div>
+}
+else
+{
+    <div class="canvas-editor-wrap">
+        <div class="canvas-toolbar" id="canvasToolbar">
+            <div class="tool-groups">
+                <div class="tool-group" id="groupDraw">
+                    <button class="group-toggle active" data-group="draw">Draw &#9660;</button>
+                    <div class="group-panel" id="panelDraw">
+                        <button class="tool-btn active" data-tool="pen" title="Pen">&#9998;</button>
+                        <button class="tool-btn" data-tool="eraser" title="Eraser">&#9003;</button>
+                    </div>
+                </div>
+                <div class="tool-group" id="groupShapes">
+                    <button class="group-toggle" data-group="shapes">Shapes &#9660;</button>
+                    <div class="group-panel hidden" id="panelShapes">
+                        <button class="tool-btn" data-tool="line" title="Line">&#47;</button>
+                        <button class="tool-btn" data-tool="rect" title="Rectangle">&#9634;</button>
+                        <button class="tool-btn" data-tool="filledRect" title="Filled Rectangle">&#9632;</button>
+                        <button class="tool-btn" data-tool="ellipse" title="Ellipse">&#9711;</button>
+                        <button class="tool-btn" data-tool="filledEllipse" title="Filled Ellipse">&#9679;</button>
+                    </div>
+                </div>
+                <div class="tool-group" id="groupFill">
+                    <button class="group-toggle" data-group="fill">Fill &#9660;</button>
+                    <div class="group-panel hidden" id="panelFill">
+                        <button class="tool-btn" data-tool="floodFill" title="Flood Fill">&#x1F5D8;</button>
+                        <button class="tool-btn" data-tool="spray" title="Spray Paint">&#x2022;&#x2022;&#x2022;</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-sizes">
+                <span class="tool-label">Size</span>
+                <button class="size-btn active" data-size="2">2</button>
+                <button class="size-btn" data-size="4">4</button>
+                <button class="size-btn" data-size="8">8</button>
+                <button class="size-btn" data-size="16">16</button>
+                <button class="size-btn" data-size="32">32</button>
+            </div>
+
+            <div class="color-section">
+                <div class="color-swatches" id="colorSwatches"></div>
+                <div class="color-current">
+                    <div class="swatch-bg" id="swatchBg" title="Background color"></div>
+                    <div class="swatch-fg" id="swatchFg" title="Foreground color (left-click palette to set)"></div>
+                </div>
+                <button class="btn-icon" id="customColorBtn" title="Custom color">+</button>
+                <input type="color" id="customColorPicker" style="display:none" />
+            </div>
+
+            <div class="canvas-actions">
+                <span class="save-indicator" id="canvasSaveIndicator"></span>
+                <button class="btn-primary" id="saveCanvasBtn">Save</button>
+                <button class="btn-text" id="zoomFitBtn" title="Fit to screen">Fit</button>
+            </div>
+        </div>
+
+        <div class="canvas-viewport" id="canvasViewport">
+            <canvas id="mainCanvas"
+                    data-page-id="@Model.PageId"
+                    data-notebook-id="@Model.NotebookId"
+                    data-width="@Model.CanvasWidth"
+                    data-height="@Model.CanvasHeight">
+            </canvas>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @if (Model.PageType == "txt")
+    {
+        <script src="~/js/text-editor.js"></script>
+    }
+    else
+    {
+        <script src="~/js/canvas-editor.js"></script>
+    }
+}

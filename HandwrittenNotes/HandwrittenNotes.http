@@ -1,0 +1,6 @@
+@HandwrittenNotes_HostAddress = http://localhost:5139
+
+GET {{HandwrittenNotes_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

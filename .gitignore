@@ -1,0 +1,18 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+
+## Docker
+docker-compose.override.yml
+
+## IDE
+.vscode/
+.idea/
+
+## Secrets
+appsettings.*.json
+!appsettings.Development.json
