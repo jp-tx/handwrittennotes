@@ -188,7 +188,7 @@ api.MapGet("/pages/{pageId}/content", async (NotebookService svc, string pageId,
 {
     var content = await svc.ReadPageContentAsync(pageId, type);
     if (content is null) return Results.NotFound();
-    var mime = type == "bmp" ? "image/bmp" : "text/plain; charset=utf-8";
+    var mime = type == "bmp" ? "image/png" : "text/plain; charset=utf-8";
     return Results.File(content, mime);
 });
 

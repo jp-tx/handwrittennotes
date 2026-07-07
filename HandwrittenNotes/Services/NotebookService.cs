@@ -42,17 +42,41 @@ public class NotebookService
 
     public async Task<byte[]?> ReadPageContentAsync(string pageId, string type)
     {
+        if (type == "bmp")
+        {
+            // Prefer PNG (current format); fall back to BMP for pages saved before the format switch
+            var pngPath = Path.Combine(_dataPath, $"{pageId}.png");
+            if (File.Exists(pngPath)) return await File.ReadAllBytesAsync(pngPath);
+            var bmpPath = Path.Combine(_dataPath, $"{pageId}.bmp");
+            if (File.Exists(bmpPath)) return await File.ReadAllBytesAsync(bmpPath);
+            return null;
+        }
         var path = Path.Combine(_dataPath, $"{pageId}.{type}");
         return File.Exists(path) ? await File.ReadAllBytesAsync(path) : null;
     }
 
     public async Task WritePageContentAsync(string pageId, string type, byte[] content)
     {
-        await File.WriteAllBytesAsync(Path.Combine(_dataPath, $"{pageId}.{type}"), content);
+        // Bitmap pages are stored as PNG regardless of the "bmp" type designator
+        var ext  = type == "bmp" ? "png" : type;
+        var path = Path.Combine(_dataPath, $"{pageId}.{ext}");
+        await File.WriteAllBytesAsync(path, content);
+
+        // Remove any legacy .bmp file so the two don't coexist
+        if (type == "bmp")
+        {
+            var legacy = Path.Combine(_dataPath, $"{pageId}.bmp");
+            if (File.Exists(legacy)) File.Delete(legacy);
+        }
     }
 
     public void DeletePageFile(string pageId, string type)
     {
+        if (type == "bmp")
+        {
+            var png = Path.Combine(_dataPath, $"{pageId}.png");
+            if (File.Exists(png)) File.Delete(png);
+        }
         var path = Path.Combine(_dataPath, $"{pageId}.{type}");
         if (File.Exists(path)) File.Delete(path);
     }

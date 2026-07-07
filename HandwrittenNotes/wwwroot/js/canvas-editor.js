@@ -489,9 +489,9 @@
         if (!isDirty) return;
         setIndicator('saving', 'Saving…');
         try {
-            const bytes = canvasToBmp(canvas);
-            const resp  = await fetch(`/api/pages/${pageId}/content?type=bmp`, {
-                method: 'PUT', headers: { 'Content-Type': 'image/bmp' }, body: bytes
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const resp = await fetch(`/api/pages/${pageId}/content?type=bmp`, {
+                method: 'PUT', headers: { 'Content-Type': 'image/png' }, body: blob
             });
             if (resp.ok) { isDirty = false; setIndicator('saved', 'Saved'); }
             else           setIndicator('error', 'Error');
@@ -511,35 +511,6 @@
     });
 
     window.addEventListener('beforeunload', (e) => { if (isDirty) e.preventDefault(); });
-
-    // ── BMP encoder (24-bit uncompressed, top-down) ───────────────────────────
-    function canvasToBmp(c) {
-        const w = c.width, h = c.height;
-        const px = c.getContext('2d').getImageData(0,0,w,h).data;
-        const rowBytes = Math.ceil(w*3/4)*4;
-        const pixBytes = rowBytes*h;
-        const fileSize = 54+pixBytes;
-        const buf  = new ArrayBuffer(fileSize);
-        const view = new DataView(buf);
-
-        view.setUint8(0,0x42); view.setUint8(1,0x4D);
-        view.setUint32(2,fileSize,true); view.setUint32(6,0,true); view.setUint32(10,54,true);
-        view.setUint32(14,40,true); view.setInt32(18,w,true); view.setInt32(22,-h,true);
-        view.setUint16(26,1,true); view.setUint16(28,24,true); view.setUint32(30,0,true);
-        view.setUint32(34,pixBytes,true); view.setInt32(38,2835,true); view.setInt32(42,2835,true);
-        view.setUint32(46,0,true); view.setUint32(50,0,true);
-
-        let off = 54;
-        for (let y=0; y<h; y++) {
-            for (let x=0; x<w; x++) {
-                const i=(y*w+x)*4;
-                view.setUint8(off++,px[i+2]); view.setUint8(off++,px[i+1]); view.setUint8(off++,px[i]);
-            }
-            const pad=rowBytes-w*3;
-            for (let p=0;p<pad;p++) view.setUint8(off++,0);
-        }
-        return new Uint8Array(buf);
-    }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
     buildPalette();
