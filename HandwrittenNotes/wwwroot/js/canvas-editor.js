@@ -22,6 +22,12 @@
     let sprayTimer    = null;
     let isDirty       = false;
 
+    // Off-screen canvas used by the smear tool for alpha-correct blending
+    const smearCanvas = document.createElement('canvas');
+    smearCanvas.width  = canvasW;
+    smearCanvas.height = canvasH;
+    const smearCtx = smearCanvas.getContext('2d');
+
     // viewport pan/zoom
     let scale = 1, panX = 0, panY = 0;
     let isPanning = false;
@@ -224,7 +230,9 @@
             return;
         }
 
-        if (tool === 'spray') { startSpray(pos.x, pos.y); return; }
+        if (tool === 'spray')   { startSpray(pos.x, pos.y); return; }
+        if (tool === 'smear')   { return; }  // smear activates only on move
+        if (tool === 'lighten') { applyLighten(pos.x, pos.y); return; }
 
         // pen / eraser — dot on initial click
         applyDrawStyle(e.pressure || 0.5);
@@ -255,6 +263,10 @@
         if (tool === 'spray') {
             stopSpray();
             startSpray(pos.x, pos.y);
+        } else if (tool === 'smear') {
+            applySmear(lastX, lastY, pos.x, pos.y);
+        } else if (tool === 'lighten') {
+            applyLighten(pos.x, pos.y);
         } else if (tool === 'pen' || tool === 'eraser') {
             applyDrawStyle(e.pressure || 0.5);
             ctx.beginPath();
@@ -338,6 +350,61 @@
 
     function stopSpray() {
         if (sprayTimer) { clearInterval(sprayTimer); sprayTimer = null; }
+    }
+
+    // ── Smear ─────────────────────────────────────────────────────────────────
+    // Samples a circular region around the previous pointer position and
+    // composites it at the new position, dragging pixels forward.
+    function applySmear(fromX, fromY, toX, toY) {
+        const r  = Math.max(brushSize * 4, 10);
+        const sx = Math.max(0, Math.round(fromX - r));
+        const sy = Math.max(0, Math.round(fromY - r));
+        const sw = Math.min(canvasW - sx, r * 2);
+        const sh = Math.min(canvasH - sy, r * 2);
+        if (sw <= 0 || sh <= 0) return;
+
+        // Copy source region to the off-screen canvas
+        smearCtx.putImageData(ctx.getImageData(sx, sy, sw, sh), 0, 0);
+
+        // Composite it at the destination with partial opacity —
+        // putImageData ignores globalAlpha so we route through drawImage
+        const dx = Math.round(toX - r);
+        const dy = Math.round(toY - r);
+        ctx.save();
+        ctx.globalAlpha = 0.72;
+        ctx.drawImage(smearCanvas, 0, 0, sw, sh, dx, dy, sw, sh);
+        ctx.restore();
+    }
+
+    // ── Lighten (partial erase) ───────────────────────────────────────────────
+    // Soft circular brush that nudges each pixel toward white by a fixed
+    // fraction per pass, with a radial falloff toward the brush edge.
+    function applyLighten(x, y) {
+        const r  = Math.max(brushSize * 4, 10);
+        const x0 = Math.max(0, Math.round(x - r));
+        const y0 = Math.max(0, Math.round(y - r));
+        const x1 = Math.min(canvasW, Math.round(x + r));
+        const y1 = Math.min(canvasH, Math.round(y + r));
+        const w  = x1 - x0, h = y1 - y0;
+        if (w <= 0 || h <= 0) return;
+
+        const imgData = ctx.getImageData(x0, y0, w, h);
+        const d = imgData.data;
+        const cx = x - x0, cy = y - y0;
+
+        for (let py = 0; py < h; py++) {
+            for (let px = 0; px < w; px++) {
+                const dist = Math.hypot(px - cx, py - cy);
+                if (dist >= r) continue;
+                const falloff  = 1 - dist / r;       // full effect at centre
+                const strength = 0.22 * falloff;      // gentle per-pass nudge
+                const i = (py * w + px) * 4;
+                d[i]   = d[i]   + (255 - d[i])   * strength;
+                d[i+1] = d[i+1] + (255 - d[i+1]) * strength;
+                d[i+2] = d[i+2] + (255 - d[i+2]) * strength;
+            }
+        }
+        ctx.putImageData(imgData, x0, y0);
     }
 
     // ── Flood fill ────────────────────────────────────────────────────────────

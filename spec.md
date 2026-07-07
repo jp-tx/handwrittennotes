@@ -171,7 +171,9 @@ Floats above the canvas in a compact collapsible strip. Organized into groups, e
 
 **Group: Draw**
 - Pen — freehand line
-- Eraser — erase to white
+- Eraser — erase to background colour
+- Smear (≈) — samples pixels under the brush at the previous position and composites them at the current position, dragging content forward like a finger smudge
+- Lighten (◑) — soft circular brush that nudges each pixel toward white by a fixed fraction per pass with radial falloff; multiple passes build up the effect (partial erase / dodge)
 
 **Group: Shape**
 - Line — straight line (click-drag)
