@@ -160,6 +160,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .add-page-form { padding: 6px 8px 6px 22px; display: flex; flex-direction: column; gap: 6px; }
 .add-page-form input[type="text"] { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 3px; padding: 4px 6px; font-size: 0.82em; }
 .add-page-form select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 3px; padding: 4px 6px; font-size: 0.82em; }
+.add-page-style-select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 3px; padding: 4px 6px; font-size: 0.8em; width: 100%; }
 .add-page-form-actions { display: flex; gap: 4px; }
 .btn-type { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-size: 0.78em; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-family: var(--font); font-weight: 600; letter-spacing: 0.04em; }
 .btn-type:hover { border-color: var(--accent); color: var(--text); }

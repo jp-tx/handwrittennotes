@@ -25,6 +25,7 @@ public class NotebookPage
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = "Untitled";
     public string Type { get; set; } = "txt";
+    public string? Style { get; set; }
     public int? CanvasWidth { get; set; }
     public int? CanvasHeight { get; set; }
 }

@@ -140,7 +140,14 @@ All widths and heights are percentage-based. Sidebar collapses to an icon strip 
 - Each notebook header shows: collapse toggle, notebook name (editable inline on double-click), delete button.
 - Inside each notebook: list of pages with name (editable inline on double-click), delete button.
 - Clicking a page name navigates to that page (pushes URL via History API, no full reload for txt pages; full nav for bmp).
-- "Add Page" button at the bottom of each open notebook section — opens a small inline form: name field, then two type-toggle buttons **BMP** (default, selected on open) and **TXT**. Only one can be active at a time; clicking switches the selection. No dropdown.
+- "Add Page" button at the bottom of each open notebook section — opens a small inline form:
+  1. Name field
+  2. Type toggle: **BMP** (default) / **TXT** buttons — only one active at a time
+  3. Style dropdown (BMP only, hidden when TXT selected):
+     - *Default size* — uses the canvas size from Settings
+     - **Canvas Size** group: Full HD Landscape (1920×1080), Full HD Portrait (1080×1920), A4 @ 200 DPI (1654×2339), A4 @ 300 DPI (2480×3508), Square HD (1080×1080), 4K Landscape (3840×2160)
+     - **Lined Pages** group: Wide Rule, College Rule, Narrow Rule — generates an A4 portrait (1654×2339 @ 200 DPI) BMP pre-filled with notebook paper (light-blue horizontal rules, red left-margin line)
+  4. Add / Cancel buttons
 - Active page is highlighted.
 
 ### Page Editor — Text (`.txt`)
@@ -292,6 +299,22 @@ Settings are stored in `_index.json` under a top-level `"settings"` key:
 |---|---|---|
 | GET | `/api/settings` | Get current settings |
 | PUT | `/api/settings` | Save settings |
+
+---
+
+## Lined Page Generation
+
+Lined pages are pre-rendered server-side as 24-bit uncompressed BMP files on page creation. All lined styles use **A4 portrait @ 200 DPI (1654 × 2339 px)**.
+
+| Style | Line spacing | Rule line colour | Margin line colour |
+|---|---|---|---|
+| Wide Rule | 69 px (8.7 mm) | #B0C4DE (light blue) | #FF9999 (soft red) |
+| College Rule | 56 px (7.1 mm) | same | same |
+| Narrow Rule | 50 px (6.4 mm) | same | same |
+
+- Top margin: 40 px before the first rule line
+- Left margin line at x = 200 px, runs full height
+- BMP is generated once at page creation; users can draw on top of it normally
 
 ---
 

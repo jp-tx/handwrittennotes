@@ -232,6 +232,7 @@
 
         let selectedType = 'bmp';
 
+        // ── Type toggle (BMP / TXT) ───────────────────────────────────────────
         const typeRow = document.createElement('div');
         typeRow.className = 'add-page-form-actions';
 
@@ -243,10 +244,43 @@
         txtBtn.className = 'btn-type';
         txtBtn.textContent = 'TXT';
 
+        // ── Style dropdown (BMP only) ─────────────────────────────────────────
+        const styleSelect = document.createElement('select');
+        styleSelect.className = 'add-page-style-select';
+
+        const styleOptions = [
+            { value: 'default',       label: 'Default size' },
+            { value: '1920x1080',     label: 'Full HD Landscape (1920\xD71080)',  group: 'Canvas Size' },
+            { value: '1080x1920',     label: 'Full HD Portrait (1080\xD71920)',   group: 'Canvas Size' },
+            { value: '1654x2339',     label: 'A4 @ 200 DPI (1654\xD72339)',       group: 'Canvas Size' },
+            { value: '2480x3508',     label: 'A4 @ 300 DPI (2480\xD73508)',       group: 'Canvas Size' },
+            { value: '1080x1080',     label: 'Square HD (1080\xD71080)',           group: 'Canvas Size' },
+            { value: '3840x2160',     label: '4K Landscape (3840\xD72160)',        group: 'Canvas Size' },
+            { value: 'lined-wide',    label: 'Lined — Wide Rule',            group: 'Lined Pages' },
+            { value: 'lined-college', label: 'Lined — College Rule',         group: 'Lined Pages' },
+            { value: 'lined-narrow',  label: 'Lined — Narrow Rule',          group: 'Lined Pages' },
+        ];
+        const groups = {};
+        styleOptions.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.value; opt.textContent = s.label;
+            if (!s.group) {
+                styleSelect.appendChild(opt);
+            } else {
+                if (!groups[s.group]) {
+                    groups[s.group] = document.createElement('optgroup');
+                    groups[s.group].label = s.group;
+                    styleSelect.appendChild(groups[s.group]);
+                }
+                groups[s.group].appendChild(opt);
+            }
+        });
+
         function selectType(type) {
             selectedType = type;
             bmpBtn.classList.toggle('active', type === 'bmp');
             txtBtn.classList.toggle('active', type === 'txt');
+            styleSelect.style.display = type === 'bmp' ? '' : 'none';
         }
         bmpBtn.addEventListener('click', () => selectType('bmp'));
         txtBtn.addEventListener('click', () => selectType('txt'));
@@ -269,6 +303,7 @@
         formActions.appendChild(cancelBtn);
         form.appendChild(nameInput);
         form.appendChild(typeRow);
+        form.appendChild(styleSelect);
         form.appendChild(formActions);
         addRow.appendChild(form);
         nameInput.focus();
@@ -280,12 +315,13 @@
         });
 
         async function submit() {
-            const name = nameInput.value.trim() || 'Untitled';
-            const type = selectedType;
-            const resp = await fetch(`/api/notebooks/${nb.id}/pages`, {
+            const name  = nameInput.value.trim() || 'Untitled';
+            const type  = selectedType;
+            const style = type === 'bmp' ? styleSelect.value : 'default';
+            const resp  = await fetch(`/api/notebooks/${nb.id}/pages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type })
+                body: JSON.stringify({ name, type, style })
             });
             if (resp.ok) {
                 const page = await resp.json();
