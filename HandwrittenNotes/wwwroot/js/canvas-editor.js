@@ -16,7 +16,8 @@
     let brushSize     = 2;
     let fgColor       = '#000000';
     let bgColor       = '#ffffff';
-    let isDrawing     = false;
+    let isDrawing        = false;
+    let drawingPointerId = -1;
     let startX = 0, startY = 0, lastX = 0, lastY = 0;
     let shapeSnap     = null;
     let sprayTimer    = null;
@@ -209,21 +210,23 @@
         e.preventDefault();
         viewport.setPointerCapture(e.pointerId);
 
-        // Touch pointers (fingers/palm) are only used for pinch-to-zoom.
-        // Keeping them in a separate map prevents a palm touch from making
-        // pointers.size >= 2 and accidentally triggering pinch mode mid-stroke.
         if (e.pointerType === 'touch') {
             pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            if (pointers.size >= 2) { isDrawing = false; stopSpray(); initPinch(); }
-            return;
-        }
-
-        // Pen / mouse ─────────────────────────────────────────────────────────
-        if (e.button === 1 || e.button === 2) {
-            isPanning = true;
-            panOriginX = e.clientX; panOriginY = e.clientY;
-            panOriginPX = panX;     panOriginPY = panY;
-            return;
+            if (pointers.size >= 2) {
+                // Second finger down — cancel any active stroke and pinch instead.
+                isDrawing = false; drawingPointerId = -1;
+                stopSpray(); initPinch(); return;
+            }
+            // Single finger: allow drawing unless something else is already drawing.
+            if (isDrawing) return;
+        } else {
+            // Pen / mouse ─────────────────────────────────────────────────────
+            if (e.button === 1 || e.button === 2) {
+                isPanning = true;
+                panOriginX = e.clientX; panOriginY = e.clientY;
+                panOriginPX = panX;     panOriginPY = panY;
+                return;
+            }
         }
 
         const pos = canvasXY(e);
@@ -231,17 +234,17 @@
 
         startX = pos.x; startY = pos.y;
         lastX  = pos.x; lastY  = pos.y;
+        drawingPointerId = e.pointerId;
 
         pushHistory();
         isDrawing = true;
         markDirty();
 
         if (['line','rect','filledRect','ellipse','filledEllipse'].includes(tool)) {
-            shapeSnap = ctx.getImageData(0, 0, canvasW, canvasH);
-            return;
+            shapeSnap = ctx.getImageData(0, 0, canvasW, canvasH); return;
         }
 
-        if (tool === 'floodFill') { floodFill(Math.round(pos.x), Math.round(pos.y)); isDrawing = false; return; }
+        if (tool === 'floodFill') { floodFill(Math.round(pos.x), Math.round(pos.y)); isDrawing = false; drawingPointerId = -1; return; }
         if (tool === 'spray')   { startSpray(pos.x, pos.y); return; }
         if (tool === 'smear')   { return; }
         if (tool === 'lighten') { applyLighten(pos.x, pos.y); return; }
@@ -259,16 +262,16 @@
 
         if (e.pointerType === 'touch') {
             pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            if (pointers.size >= 2) { handlePinch(); }
-            return;
-        }
-
-        // Pen / mouse ─────────────────────────────────────────────────────────
-        if (isPanning) {
-            panX = panOriginPX + (e.clientX - panOriginX);
-            panY = panOriginPY + (e.clientY - panOriginY);
-            applyTransform();
-            return;
+            if (pointers.size >= 2) { handlePinch(); return; }
+            // Single-finger touch: only draw if this is the pointer that started the stroke.
+            if (e.pointerId !== drawingPointerId) return;
+        } else {
+            // Pen / mouse ─────────────────────────────────────────────────────
+            if (isPanning) {
+                panX = panOriginPX + (e.clientX - panOriginX);
+                panY = panOriginPY + (e.clientY - panOriginY);
+                applyTransform(); return;
+            }
         }
 
         if (!isDrawing) return;
@@ -276,8 +279,7 @@
         const pos = canvasXY(e);
 
         if (tool === 'spray') {
-            stopSpray();
-            startSpray(pos.x, pos.y);
+            stopSpray(); startSpray(pos.x, pos.y);
         } else if (tool === 'smear') {
             applySmear(lastX, lastY, pos.x, pos.y);
         } else if (tool === 'lighten') {
@@ -303,11 +305,14 @@
         if (e.pointerType === 'touch') {
             pointers.delete(e.pointerId);
             lastPinchDist = 0; lastCentroid = null;
-            return;
+            // Only end the stroke if this was the drawing finger.
+            if (e.pointerId !== drawingPointerId) return;
+        } else {
+            // Pen / mouse ─────────────────────────────────────────────────────
+            if (isPanning) { isPanning = false; return; }
         }
 
-        // Pen / mouse ─────────────────────────────────────────────────────────
-        if (isPanning) { isPanning = false; return; }
+        drawingPointerId = -1;
         if (!isDrawing) return;
 
         const pos = canvasXY(e);
