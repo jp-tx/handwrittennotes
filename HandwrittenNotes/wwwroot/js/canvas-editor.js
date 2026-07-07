@@ -197,15 +197,17 @@
     }
 
     // ── Pointer events ────────────────────────────────────────────────────────
-    canvas.addEventListener('pointerdown',   onDown);
-    canvas.addEventListener('pointermove',   onMove);
-    canvas.addEventListener('pointerup',     onUp);
-    canvas.addEventListener('pointercancel', onUp);
-    canvas.addEventListener('contextmenu',   e => e.preventDefault());
+    // Listen on the viewport so pinch gestures anywhere in the dark surround
+    // are handled by the app rather than passed to the browser as page zoom.
+    viewport.addEventListener('pointerdown',   onDown);
+    viewport.addEventListener('pointermove',   onMove);
+    viewport.addEventListener('pointerup',     onUp);
+    viewport.addEventListener('pointercancel', onUp);
+    viewport.addEventListener('contextmenu',   e => e.preventDefault());
 
     function onDown(e) {
         e.preventDefault();
-        canvas.setPointerCapture(e.pointerId);
+        viewport.setPointerCapture(e.pointerId);
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
         if (pointers.size >= 2) { isDrawing = false; stopSpray(); initPinch(); return; }
@@ -218,6 +220,10 @@
         }
 
         const pos = canvasXY(e);
+
+        // Ignore touches that land in the viewport surround outside the canvas
+        if (pos.x < 0 || pos.x >= canvasW || pos.y < 0 || pos.y >= canvasH) return;
+
         startX = pos.x; startY = pos.y;
         lastX  = pos.x; lastY  = pos.y;
 

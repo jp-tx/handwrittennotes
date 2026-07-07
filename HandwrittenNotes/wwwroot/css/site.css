@@ -132,7 +132,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .swatch-fg { position: absolute; width: 22px; height: 22px; top: 0; left: 0; border-radius: 3px; border: 2px solid #fff; cursor: pointer; z-index: 1; }
 
 .canvas-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.canvas-viewport { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #404040; position: relative; cursor: crosshair; isolation: isolate; }
+.canvas-viewport { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #404040; position: relative; cursor: crosshair; isolation: isolate; touch-action: none; }
 #canvasInner { position: relative; flex-shrink: 0; line-height: 0; transform-origin: center center; }
 #canvasLoadingOverlay { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(30,30,30,0.82); color: #ccc; font-size: 0.9em; pointer-events: none; }
 #canvasLoadingOverlay.hidden { display: none; }
