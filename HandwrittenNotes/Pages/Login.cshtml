@@ -9,10 +9,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login — HandwrittenNotes</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="stylesheet" href="~/css/site.css" />
 </head>
 <body class="login-body">
     <div class="login-card">
+        <img src="/icon.svg" class="login-icon" alt="HandwrittenNotes" />
         <h1 class="login-title">HandwrittenNotes</h1>
         @if (!string.IsNullOrEmpty(Model.Error))
         {
