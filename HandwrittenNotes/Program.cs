@@ -228,7 +228,7 @@ static class BmpUtils
     // evenly-spaced light-blue horizontal lines, and a red left-margin line.
     public static byte[] GenerateLined(int w, int h, int lineSpacing)
     {
-        const int topMargin   = 40;   // px before first rule line
+        const int topMargin   = 200;  // px before first rule line (~1 inch at 200 DPI)
         const int leftMarginX = 200;  // x position of red margin line
 
         int rowSize     = ((w * 3 + 3) / 4) * 4;  // pad each row to 4 bytes

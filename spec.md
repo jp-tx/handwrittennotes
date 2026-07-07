@@ -314,7 +314,7 @@ Lined pages use **A4 portrait @ 200 DPI (1654 × 2339 px)**. Lines are drawn cli
 | College Rule | 56 px (7.1 mm) | same | same |
 | Narrow Rule | 50 px (6.4 mm) | same | same |
 
-- Top margin: 40 px before the first rule line
+- Top margin: 200 px before the first rule line (~1 inch at 200 DPI)
 - Left margin line at x = 200 px, runs full height
 - Lines are rendered on a separate `#linesCanvas` stacked behind the ink canvas; the ink canvas uses `mix-blend-mode: multiply` so white ink pixels are transparent and reveal the lines below
 - **Only user ink is saved to the BMP file** — the lines are regenerated in JS on every open

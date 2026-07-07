@@ -425,7 +425,7 @@
         lctx.fillRect(0, 0, canvasW, canvasH);
         lctx.lineWidth = 1;
         lctx.strokeStyle = '#B0C4DE';
-        for (let y = 40; y < canvasH; y += spacing) {
+        for (let y = 200; y < canvasH; y += spacing) {
             lctx.beginPath();
             lctx.moveTo(0, y + 0.5);
             lctx.lineTo(canvasW, y + 0.5);
