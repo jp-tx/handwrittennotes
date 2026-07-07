@@ -150,16 +150,8 @@ api.MapPost("/notebooks/{notebookId}/pages", async (NotebookService svc, string 
     {
         await svc.WritePageContentAsync(page.Id, "txt", Encoding.UTF8.GetBytes(""));
     }
-    else if (style.StartsWith("lined-"))
-    {
-        var spacing = style switch
-        {
-            "lined-college" => 56,
-            "lined-narrow"  => 50,
-            _               => 69   // lined-wide (default)
-        };
-        await svc.WritePageContentAsync(page.Id, "bmp", BmpUtils.GenerateLined(cw, ch, spacing));
-    }
+    // Lined BMP pages: no pre-generated file — lines are drawn client-side in JS at open time.
+    // The BMP file is created on the user's first save and contains only their ink (no baked-in lines).
 
     nb.Pages.Add(page);
     await svc.WriteIndexAsync(index);

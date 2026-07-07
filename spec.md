@@ -306,7 +306,7 @@ Settings are stored in `_index.json` under a top-level `"settings"` key:
 
 ## Lined Page Generation
 
-Lined pages are pre-rendered server-side as 24-bit uncompressed BMP files on page creation. All lined styles use **A4 portrait @ 200 DPI (1654 × 2339 px)**.
+Lined pages use **A4 portrait @ 200 DPI (1654 × 2339 px)**. Lines are drawn client-side in JS at open time — no server-side BMP pre-generation. This makes pages appear instantly without a large file download on every open.
 
 | Style | Line spacing | Rule line colour | Margin line colour |
 |---|---|---|---|
@@ -316,7 +316,9 @@ Lined pages are pre-rendered server-side as 24-bit uncompressed BMP files on pag
 
 - Top margin: 40 px before the first rule line
 - Left margin line at x = 200 px, runs full height
-- BMP is generated once at page creation; users can draw on top of it normally
+- Lines are rendered on a separate `#linesCanvas` stacked behind the ink canvas; the ink canvas uses `mix-blend-mode: multiply` so white ink pixels are transparent and reveal the lines below
+- **Only user ink is saved to the BMP file** — the lines are regenerated in JS on every open
+- A **Hide/Show Lines** toggle button appears in the toolbar for lined pages
 
 ---
 

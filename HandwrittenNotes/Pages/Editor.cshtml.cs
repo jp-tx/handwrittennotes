@@ -14,6 +14,7 @@ public class EditorModel : PageModel
     public string PageId { get; private set; } = "";
     public string PageName { get; private set; } = "";
     public string PageType { get; private set; } = "txt";
+    public string? Style { get; private set; }
     public int CanvasWidth { get; private set; } = 1920;
     public int CanvasHeight { get; private set; } = 1080;
 
@@ -29,6 +30,7 @@ public class EditorModel : PageModel
         PageId = pageId;
         PageName = page.Name;
         PageType = page.Type;
+        Style = page.Style;
         CanvasWidth = page.CanvasWidth ?? index.Settings.DefaultCanvasWidth;
         CanvasHeight = page.CanvasHeight ?? index.Settings.DefaultCanvasHeight;
 

@@ -72,16 +72,24 @@ else
                 <button class="btn-text" id="undoBtn" title="Undo (Ctrl+Z)" disabled>&#8629; Undo</button>
                 <button class="btn-primary" id="saveCanvasBtn">Save</button>
                 <button class="btn-text" id="zoomFitBtn" title="Fit to screen">Fit</button>
+                @if (Model.Style?.StartsWith("lined-") == true)
+                {
+                    <button class="btn-text" id="toggleLinesBtn" title="Show or hide ruling lines">Hide Lines</button>
+                }
             </div>
         </div>
 
         <div class="canvas-viewport" id="canvasViewport">
-            <canvas id="mainCanvas"
-                    data-page-id="@Model.PageId"
-                    data-notebook-id="@Model.NotebookId"
-                    data-width="@Model.CanvasWidth"
-                    data-height="@Model.CanvasHeight">
-            </canvas>
+            <div id="canvasInner">
+                <canvas id="linesCanvas"></canvas>
+                <canvas id="mainCanvas"
+                        data-page-id="@Model.PageId"
+                        data-notebook-id="@Model.NotebookId"
+                        data-width="@Model.CanvasWidth"
+                        data-height="@Model.CanvasHeight"
+                        data-style="@(Model.Style ?? "")">
+                </canvas>
+            </div>
         </div>
     </div>
 }

@@ -28,6 +28,12 @@
     smearCanvas.height = canvasH;
     const smearCtx = smearCanvas.getContext('2d');
 
+    // Lines overlay for lined page styles
+    const pageStyle  = canvas.dataset.style || '';
+    const isLined    = pageStyle.startsWith('lined-');
+    const linesEl    = document.getElementById('linesCanvas');
+    let linesVisible = isLined;
+
     // viewport pan/zoom
     let scale = 1, panX = 0, panY = 0;
     let isPanning = false;
@@ -74,10 +80,11 @@
     ];
 
     // ── Viewport ──────────────────────────────────────────────────────────────
-    const viewport = document.getElementById('canvasViewport');
+    const viewport    = document.getElementById('canvasViewport');
+    const canvasInner = document.getElementById('canvasInner');
 
     function applyTransform() {
-        canvas.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`;
+        if (canvasInner) canvasInner.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`;
     }
 
     function fitToScreen() {
@@ -407,6 +414,30 @@
         ctx.putImageData(imgData, x0, y0);
     }
 
+    // ── Lines drawing ─────────────────────────────────────────────────────────
+    // Mirrors BmpUtils.GenerateLined in C# but renders directly to linesEl.
+    // Drawing happens in JS so lines appear instantly without a server round-trip.
+    function drawLines() {
+        if (!linesEl) return;
+        const spacing = pageStyle === 'lined-college' ? 56 : pageStyle === 'lined-narrow' ? 50 : 69;
+        const lctx = linesEl.getContext('2d');
+        lctx.fillStyle = '#ffffff';
+        lctx.fillRect(0, 0, canvasW, canvasH);
+        lctx.lineWidth = 1;
+        lctx.strokeStyle = '#B0C4DE';
+        for (let y = 40; y < canvasH; y += spacing) {
+            lctx.beginPath();
+            lctx.moveTo(0, y + 0.5);
+            lctx.lineTo(canvasW, y + 0.5);
+            lctx.stroke();
+        }
+        lctx.strokeStyle = '#FF9999';
+        lctx.beginPath();
+        lctx.moveTo(200.5, 0);
+        lctx.lineTo(200.5, canvasH);
+        lctx.stroke();
+    }
+
     // ── Flood fill ────────────────────────────────────────────────────────────
     function hexToRgb(hex) {
         const n = parseInt(hex.replace('#',''), 16);
@@ -518,8 +549,28 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
+    // Set up lines overlay for lined page styles
+    if (isLined && linesEl) {
+        linesEl.width  = canvasW;
+        linesEl.height = canvasH;
+        drawLines();
+        canvas.style.mixBlendMode = 'multiply';
+    } else if (linesEl) {
+        linesEl.style.display = 'none';
+    }
+
+    // Lines toggle button
+    document.getElementById('toggleLinesBtn')?.addEventListener('click', () => {
+        linesVisible = !linesVisible;
+        if (linesEl) linesEl.style.display = linesVisible ? '' : 'none';
+        canvas.style.mixBlendMode = linesVisible ? 'multiply' : '';
+        const btn = document.getElementById('toggleLinesBtn');
+        if (btn) btn.textContent = linesVisible ? 'Hide Lines' : 'Show Lines';
+    });
+
+    // Load any previously saved ink (404 is fine for brand-new lined pages)
     const srcImg = new Image();
-    srcImg.onload = () => { ctx.drawImage(srcImg,0,0); };
+    srcImg.onload = () => { ctx.drawImage(srcImg, 0, 0); };
     srcImg.src = `/api/pages/${pageId}/content?type=bmp&t=${Date.now()}`;
 
     fitToScreen();
