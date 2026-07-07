@@ -569,8 +569,13 @@
     });
 
     // Load any previously saved ink (404 is fine for brand-new lined pages)
+    const loadingOverlay = document.getElementById('canvasLoadingOverlay');
     const srcImg = new Image();
-    srcImg.onload = () => { ctx.drawImage(srcImg, 0, 0); };
+    srcImg.onload = () => {
+        ctx.drawImage(srcImg, 0, 0);
+        loadingOverlay?.classList.add('hidden');
+    };
+    srcImg.onerror = () => { loadingOverlay?.classList.add('hidden'); };
     srcImg.src = `/api/pages/${pageId}/content?type=bmp&t=${Date.now()}`;
 
     fitToScreen();

@@ -132,6 +132,10 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .canvas-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .canvas-viewport { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #404040; position: relative; cursor: crosshair; isolation: isolate; }
 #canvasInner { position: relative; flex-shrink: 0; line-height: 0; transform-origin: center center; }
+#canvasLoadingOverlay { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(30,30,30,0.82); color: #ccc; font-size: 0.9em; pointer-events: none; }
+#canvasLoadingOverlay.hidden { display: none; }
+.loading-spinner { width: 32px; height: 32px; border: 3px solid #444; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.75s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 #linesCanvas { position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none; }
 #mainCanvas { position: relative; z-index: 1; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: crosshair; touch-action: none; display: block; }
 
