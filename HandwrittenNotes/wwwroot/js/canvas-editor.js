@@ -208,10 +208,17 @@
     function onDown(e) {
         e.preventDefault();
         viewport.setPointerCapture(e.pointerId);
-        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (pointers.size >= 2) { isDrawing = false; stopSpray(); initPinch(); return; }
+        // Touch pointers (fingers/palm) are only used for pinch-to-zoom.
+        // Keeping them in a separate map prevents a palm touch from making
+        // pointers.size >= 2 and accidentally triggering pinch mode mid-stroke.
+        if (e.pointerType === 'touch') {
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size >= 2) { isDrawing = false; stopSpray(); initPinch(); }
+            return;
+        }
 
+        // Pen / mouse ─────────────────────────────────────────────────────────
         if (e.button === 1 || e.button === 2) {
             isPanning = true;
             panOriginX = e.clientX; panOriginY = e.clientY;
@@ -220,14 +227,11 @@
         }
 
         const pos = canvasXY(e);
-
-        // Ignore touches that land in the viewport surround outside the canvas
         if (pos.x < 0 || pos.x >= canvasW || pos.y < 0 || pos.y >= canvasH) return;
 
         startX = pos.x; startY = pos.y;
         lastX  = pos.x; lastY  = pos.y;
 
-        // Snapshot for undo before any action
         pushHistory();
         isDrawing = true;
         markDirty();
@@ -237,17 +241,11 @@
             return;
         }
 
-        if (tool === 'floodFill') {
-            floodFill(Math.round(pos.x), Math.round(pos.y));
-            isDrawing = false;
-            return;
-        }
-
+        if (tool === 'floodFill') { floodFill(Math.round(pos.x), Math.round(pos.y)); isDrawing = false; return; }
         if (tool === 'spray')   { startSpray(pos.x, pos.y); return; }
-        if (tool === 'smear')   { return; }  // smear activates only on move
+        if (tool === 'smear')   { return; }
         if (tool === 'lighten') { applyLighten(pos.x, pos.y); return; }
 
-        // pen / eraser — dot on initial click
         applyDrawStyle(e.pressure || 0.5);
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
@@ -258,10 +256,14 @@
 
     function onMove(e) {
         e.preventDefault();
-        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (pointers.size >= 2) { handlePinch(); return; }
+        if (e.pointerType === 'touch') {
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size >= 2) { handlePinch(); }
+            return;
+        }
 
+        // Pen / mouse ─────────────────────────────────────────────────────────
         if (isPanning) {
             panX = panOriginPX + (e.clientX - panOriginX);
             panY = panOriginPY + (e.clientY - panOriginY);
@@ -298,9 +300,13 @@
     }
 
     function onUp(e) {
-        pointers.delete(e.pointerId);
-        lastPinchDist = 0; lastCentroid = null;
+        if (e.pointerType === 'touch') {
+            pointers.delete(e.pointerId);
+            lastPinchDist = 0; lastCentroid = null;
+            return;
+        }
 
+        // Pen / mouse ─────────────────────────────────────────────────────────
         if (isPanning) { isPanning = false; return; }
         if (!isDrawing) return;
 
