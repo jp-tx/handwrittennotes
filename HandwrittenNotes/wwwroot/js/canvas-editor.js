@@ -46,11 +46,20 @@
     let lastCentroid  = null;
 
     // ── Undo history ──────────────────────────────────────────────────────────
-    const MAX_HISTORY = 50;
-    const history     = [];   // array of PNG data-URLs
+    // Snapshots are stored as off-screen canvas elements copied with drawImage.
+    // This is ~100x faster than canvas.toDataURL (no PNG encoding on the main
+    // thread), eliminating the blocking that caused quick successive strokes to
+    // drop: toDataURL could take 50-500 ms, during which a fast pointerup would
+    // queue and immediately terminate the stroke after isDrawing was set true.
+    const MAX_HISTORY = 20;
+    const history     = [];  // array of HTMLCanvasElement snapshots
 
     function pushHistory() {
-        history.push(canvas.toDataURL('image/png'));
+        const snap = document.createElement('canvas');
+        snap.width  = canvasW;
+        snap.height = canvasH;
+        snap.getContext('2d').drawImage(canvas, 0, 0);
+        history.push(snap);
         if (history.length > MAX_HISTORY) history.shift();
         updateUndoBtn();
     }
@@ -60,14 +69,11 @@
         if (btn) btn.disabled = history.length === 0;
     }
 
-    async function undo() {
+    function undo() {
         if (history.length === 0) return;
-        const dataUrl = history.pop();
-        await new Promise(resolve => {
-            const img = new Image();
-            img.onload = () => { ctx.clearRect(0, 0, canvasW, canvasH); ctx.drawImage(img, 0, 0); resolve(); };
-            img.src = dataUrl;
-        });
+        const snap = history.pop();
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        ctx.drawImage(snap, 0, 0);
         markDirty();
         updateUndoBtn();
     }
@@ -276,6 +282,7 @@
                 panY = panOriginPY + (e.clientY - panOriginY);
                 applyTransform(); return;
             }
+            if (e.pointerId !== drawingPointerId) return;
         }
 
         if (!isDrawing) return;
