@@ -18,7 +18,7 @@
     let bgColor       = '#ffffff';
     let isDrawing     = false;
     let startX = 0, startY = 0, lastX = 0, lastY = 0;
-    let shapeSnap     = null;   // saved ImageData for shape preview
+    let shapeSnap     = null;
     let sprayTimer    = null;
     let isDirty       = false;
 
@@ -31,6 +31,33 @@
     const pointers    = new Map();
     let lastPinchDist = 0;
     let lastCentroid  = null;
+
+    // ── Undo history ──────────────────────────────────────────────────────────
+    const MAX_HISTORY = 50;
+    const history     = [];   // array of PNG data-URLs
+
+    function pushHistory() {
+        history.push(canvas.toDataURL('image/png'));
+        if (history.length > MAX_HISTORY) history.shift();
+        updateUndoBtn();
+    }
+
+    function updateUndoBtn() {
+        const btn = document.getElementById('undoBtn');
+        if (btn) btn.disabled = history.length === 0;
+    }
+
+    async function undo() {
+        if (history.length === 0) return;
+        const dataUrl = history.pop();
+        await new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => { ctx.clearRect(0, 0, canvasW, canvasH); ctx.drawImage(img, 0, 0); resolve(); };
+            img.src = dataUrl;
+        });
+        markDirty();
+        updateUndoBtn();
+    }
 
     // MS-Paint 16-colour palette
     const PALETTE = [
@@ -51,8 +78,7 @@
         const vw = viewport.clientWidth;
         const vh = viewport.clientHeight;
         scale = Math.min(vw / canvasW, vh / canvasH) * 0.92;
-        panX  = 0;
-        panY  = 0;
+        panX  = 0; panY = 0;
         applyTransform();
     }
 
@@ -60,8 +86,7 @@
 
     viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.9 : 1.1;
-        scale = Math.max(0.05, Math.min(20, scale * factor));
+        scale = Math.max(0.05, Math.min(20, scale * (e.deltaY > 0 ? 0.9 : 1.1)));
         applyTransform();
     }, { passive: false });
 
@@ -100,18 +125,14 @@
         if (bg) bg.style.background = bgColor;
     }
 
-    // Custom-colour picker
-    const customBtn    = document.getElementById('customColorBtn');
-    const colorPicker  = document.getElementById('customColorPicker');
+    const customBtn   = document.getElementById('customColorBtn');
+    const colorPicker = document.getElementById('customColorPicker');
     if (customBtn && colorPicker) {
-        customBtn.addEventListener('click', () => {
-            colorPicker.value = fgColor;
-            colorPicker.click();
-        });
+        customBtn.addEventListener('click', () => { colorPicker.value = fgColor; colorPicker.click(); });
         colorPicker.addEventListener('input', () => setFg(colorPicker.value));
     }
 
-    // ── Tool/size selectors ───────────────────────────────────────────────────
+    // ── Tool / size selectors ─────────────────────────────────────────────────
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             stopSpray();
@@ -121,21 +142,15 @@
         });
     });
 
-    // Group dropdowns – close all then toggle clicked
     document.querySelectorAll('.group-toggle').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const name  = btn.dataset.group;
             const panel = document.getElementById('panel' + name.charAt(0).toUpperCase() + name.slice(1));
             const wasOpen = panel && !panel.classList.contains('hidden');
-
             document.querySelectorAll('.group-panel').forEach(p => p.classList.add('hidden'));
             document.querySelectorAll('.group-toggle').forEach(b => b.classList.remove('open'));
-
-            if (panel && !wasOpen) {
-                panel.classList.remove('hidden');
-                btn.classList.add('open');
-            }
+            if (panel && !wasOpen) { panel.classList.remove('hidden'); btn.classList.add('open'); }
         });
     });
 
@@ -169,36 +184,32 @@
     }
 
     // ── Pointer events ────────────────────────────────────────────────────────
-    canvas.addEventListener('pointerdown',  onDown);
-    canvas.addEventListener('pointermove',  onMove);
-    canvas.addEventListener('pointerup',    onUp);
+    canvas.addEventListener('pointerdown',   onDown);
+    canvas.addEventListener('pointermove',   onMove);
+    canvas.addEventListener('pointerup',     onUp);
     canvas.addEventListener('pointercancel', onUp);
-    canvas.addEventListener('contextmenu',  e => e.preventDefault());
+    canvas.addEventListener('contextmenu',   e => e.preventDefault());
 
     function onDown(e) {
         e.preventDefault();
         canvas.setPointerCapture(e.pointerId);
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (pointers.size >= 2) {
-            // entering multitouch — cancel any freehand
-            isDrawing = false;
-            stopSpray();
-            initPinch();
-            return;
-        }
+        if (pointers.size >= 2) { isDrawing = false; stopSpray(); initPinch(); return; }
 
-        // Right/middle button → pan
         if (e.button === 1 || e.button === 2) {
-            isPanning    = true;
-            panOriginX   = e.clientX; panOriginY  = e.clientY;
-            panOriginPX  = panX;      panOriginPY = panY;
+            isPanning = true;
+            panOriginX = e.clientX; panOriginY = e.clientY;
+            panOriginPX = panX;     panOriginPY = panY;
             return;
         }
 
         const pos = canvasXY(e);
         startX = pos.x; startY = pos.y;
         lastX  = pos.x; lastY  = pos.y;
+
+        // Snapshot for undo before any action
+        pushHistory();
         isDrawing = true;
         markDirty();
 
@@ -213,12 +224,9 @@
             return;
         }
 
-        if (tool === 'spray') {
-            startSpray(pos.x, pos.y);
-            return;
-        }
+        if (tool === 'spray') { startSpray(pos.x, pos.y); return; }
 
-        // pen / eraser — draw initial dot
+        // pen / eraser — dot on initial click
         applyDrawStyle(e.pressure || 0.5);
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
@@ -231,11 +239,7 @@
         e.preventDefault();
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        // Multitouch: pinch-zoom + pan
-        if (pointers.size >= 2) {
-            handlePinch();
-            return;
-        }
+        if (pointers.size >= 2) { handlePinch(); return; }
 
         if (isPanning) {
             panX = panOriginPX + (e.clientX - panOriginX);
@@ -257,7 +261,6 @@
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-            // start next segment from current point
             resetCtxState();
         } else if (shapeSnap) {
             ctx.putImageData(shapeSnap, 0, 0);
@@ -271,8 +274,7 @@
 
     function onUp(e) {
         pointers.delete(e.pointerId);
-        lastPinchDist = 0;
-        lastCentroid  = null;
+        lastPinchDist = 0; lastCentroid = null;
 
         if (isPanning) { isPanning = false; return; }
         if (!isDrawing) return;
@@ -294,27 +296,11 @@
     function drawShape(x1, y1, x2, y2) {
         ctx.beginPath();
         switch (tool) {
-            case 'line':
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-                break;
-            case 'rect':
-                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-                break;
-            case 'filledRect':
-                ctx.fillStyle = fgColor;
-                ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-                break;
-            case 'ellipse':
-                ctx.ellipse((x1+x2)/2, (y1+y2)/2, Math.abs(x2-x1)/2, Math.abs(y2-y1)/2, 0, 0, Math.PI*2);
-                ctx.stroke();
-                break;
-            case 'filledEllipse':
-                ctx.fillStyle = fgColor;
-                ctx.ellipse((x1+x2)/2, (y1+y2)/2, Math.abs(x2-x1)/2, Math.abs(y2-y1)/2, 0, 0, Math.PI*2);
-                ctx.fill();
-                break;
+            case 'line':         ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); break;
+            case 'rect':         ctx.strokeRect(x1,y1,x2-x1,y2-y1); break;
+            case 'filledRect':   ctx.fillStyle=fgColor; ctx.fillRect(x1,y1,x2-x1,y2-y1); break;
+            case 'ellipse':      ctx.ellipse((x1+x2)/2,(y1+y2)/2,Math.abs(x2-x1)/2,Math.abs(y2-y1)/2,0,0,Math.PI*2); ctx.stroke(); break;
+            case 'filledEllipse':ctx.fillStyle=fgColor; ctx.ellipse((x1+x2)/2,(y1+y2)/2,Math.abs(x2-x1)/2,Math.abs(y2-y1)/2,0,0,Math.PI*2); ctx.fill(); break;
         }
     }
 
@@ -322,30 +308,18 @@
     function initPinch() {
         const pts = [...pointers.values()];
         if (pts.length < 2) return;
-        lastPinchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-        lastCentroid  = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+        lastPinchDist = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
+        lastCentroid  = { x:(pts[0].x+pts[1].x)/2, y:(pts[0].y+pts[1].y)/2 };
     }
 
     function handlePinch() {
         const pts = [...pointers.values()];
         if (pts.length < 2) return;
-
-        const dist     = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-        const centroid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-
-        if (lastPinchDist > 0) {
-            scale = Math.max(0.05, Math.min(20, scale * (dist / lastPinchDist)));
-            applyTransform();
-        }
-
-        if (lastCentroid) {
-            panX += centroid.x - lastCentroid.x;
-            panY += centroid.y - lastCentroid.y;
-            applyTransform();
-        }
-
-        lastPinchDist = dist;
-        lastCentroid  = centroid;
+        const dist     = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
+        const centroid = { x:(pts[0].x+pts[1].x)/2, y:(pts[0].y+pts[1].y)/2 };
+        if (lastPinchDist > 0) { scale = Math.max(0.05,Math.min(20,scale*(dist/lastPinchDist))); applyTransform(); }
+        if (lastCentroid)      { panX += centroid.x-lastCentroid.x; panY += centroid.y-lastCentroid.y; applyTransform(); }
+        lastPinchDist = dist; lastCentroid = centroid;
     }
 
     // ── Spray ─────────────────────────────────────────────────────────────────
@@ -353,12 +327,10 @@
 
     function startSpray(x, y) {
         sprayTimer = setInterval(() => {
-            ctx.fillStyle   = fgColor;
-            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = fgColor; ctx.globalAlpha = 0.8;
             for (let i = 0; i < SPRAY_N; i++) {
-                const a = Math.random() * Math.PI * 2;
-                const r = Math.random() * SPRAY_R;
-                ctx.fillRect(x + Math.cos(a) * r, y + Math.sin(a) * r, brushSize, brushSize);
+                const a = Math.random()*Math.PI*2, r = Math.random()*SPRAY_R;
+                ctx.fillRect(x+Math.cos(a)*r, y+Math.sin(a)*r, brushSize, brushSize);
             }
             ctx.globalAlpha = 1;
         }, 16);
@@ -371,43 +343,32 @@
     // ── Flood fill ────────────────────────────────────────────────────────────
     function hexToRgb(hex) {
         const n = parseInt(hex.replace('#',''), 16);
-        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        return [(n>>16)&255, (n>>8)&255, n&255];
     }
 
     function floodFill(sx, sy) {
         if (sx < 0 || sx >= canvasW || sy < 0 || sy >= canvasH) return;
-
         const imgData = ctx.getImageData(0, 0, canvasW, canvasH);
         const d = imgData.data;
         const [fr, fg2, fb] = hexToRgb(fgColor);
-
-        const base = (sy * canvasW + sx) * 4;
-        const tr = d[base], tg = d[base+1], tb = d[base+2], ta = d[base+3];
-
-        // Already that colour
-        if (tr === fr && tg === fg2 && tb === fb && ta === 255) return;
-
-        const visited = new Uint8Array(canvasW * canvasH);
-        const stack   = [sy * canvasW + sx];
-
+        const base = (sy*canvasW+sx)*4;
+        const tr=d[base], tg=d[base+1], tb=d[base+2], ta=d[base+3];
+        if (tr===fr && tg===fg2 && tb===fb && ta===255) return;
+        const visited = new Uint8Array(canvasW*canvasH);
+        const stack   = [sy*canvasW+sx];
         while (stack.length) {
             const pos = stack.pop();
             if (visited[pos]) continue;
             visited[pos] = 1;
-
-            const i = pos * 4;
-            if (d[i] !== tr || d[i+1] !== tg || d[i+2] !== tb || d[i+3] !== ta) continue;
-
-            d[i] = fr; d[i+1] = fg2; d[i+2] = fb; d[i+3] = 255;
-
-            const x = pos % canvasW;
-            const y = (pos / canvasW) | 0;
-            if (x > 0)           stack.push(pos - 1);
-            if (x < canvasW - 1) stack.push(pos + 1);
-            if (y > 0)           stack.push(pos - canvasW);
-            if (y < canvasH - 1) stack.push(pos + canvasW);
+            const i = pos*4;
+            if (d[i]!==tr||d[i+1]!==tg||d[i+2]!==tb||d[i+3]!==ta) continue;
+            d[i]=fr; d[i+1]=fg2; d[i+2]=fb; d[i+3]=255;
+            const x=pos%canvasW, y=(pos/canvasW)|0;
+            if (x>0)           stack.push(pos-1);
+            if (x<canvasW-1)   stack.push(pos+1);
+            if (y>0)           stack.push(pos-canvasW);
+            if (y<canvasH-1)   stack.push(pos+canvasW);
         }
-
         ctx.putImageData(imgData, 0, 0);
     }
 
@@ -415,7 +376,6 @@
     const indicator = document.getElementById('canvasSaveIndicator');
 
     function markDirty() {
-        if (isDirty) return;
         isDirty = true;
         if (indicator) { indicator.textContent = 'Unsaved'; indicator.className = 'save-indicator saving'; }
     }
@@ -424,9 +384,7 @@
         if (!indicator) return;
         indicator.textContent = text;
         indicator.className   = 'save-indicator ' + cls;
-        setTimeout(() => {
-            if (indicator) { indicator.textContent = ''; indicator.className = 'save-indicator'; }
-        }, 2000);
+        setTimeout(() => { if (indicator) { indicator.textContent=''; indicator.className='save-indicator'; } }, 2000);
     }
 
     async function saveCanvas() {
@@ -435,84 +393,68 @@
         try {
             const bytes = canvasToBmp(canvas);
             const resp  = await fetch(`/api/pages/${pageId}/content?type=bmp`, {
-                method:  'PUT',
-                headers: { 'Content-Type': 'image/bmp' },
-                body:    bytes
+                method: 'PUT', headers: { 'Content-Type': 'image/bmp' }, body: bytes
             });
             if (resp.ok) { isDirty = false; setIndicator('saved', 'Saved'); }
             else           setIndicator('error', 'Error');
-        } catch {
-            setIndicator('error', 'Error');
-        }
+        } catch { setIndicator('error', 'Error'); }
     }
 
+    // ── Autosave every 30 s ───────────────────────────────────────────────────
+    setInterval(() => { if (isDirty) saveCanvas(); }, 30000);
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────────
     document.getElementById('saveCanvasBtn')?.addEventListener('click', saveCanvas);
+    document.getElementById('undoBtn')?.addEventListener('click', undo);
+
     document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCanvas(); }
+        if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); saveCanvas(); }
+        if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
     });
+
     window.addEventListener('beforeunload', (e) => { if (isDirty) e.preventDefault(); });
 
     // ── BMP encoder (24-bit uncompressed, top-down) ───────────────────────────
     function canvasToBmp(c) {
-        const w  = c.width, h = c.height;
-        const px = c.getContext('2d').getImageData(0, 0, w, h).data;
-
-        const rowBytes = Math.ceil(w * 3 / 4) * 4;   // rows padded to 4 bytes
-        const pixBytes = rowBytes * h;
-        const fileSize = 54 + pixBytes;
-
+        const w = c.width, h = c.height;
+        const px = c.getContext('2d').getImageData(0,0,w,h).data;
+        const rowBytes = Math.ceil(w*3/4)*4;
+        const pixBytes = rowBytes*h;
+        const fileSize = 54+pixBytes;
         const buf  = new ArrayBuffer(fileSize);
         const view = new DataView(buf);
 
-        // --- File header ---
-        view.setUint8(0, 0x42); view.setUint8(1, 0x4D);  // "BM"
-        view.setUint32(2,  fileSize, true);
-        view.setUint32(6,  0,        true);               // reserved
-        view.setUint32(10, 54,       true);               // pixel data offset
+        view.setUint8(0,0x42); view.setUint8(1,0x4D);
+        view.setUint32(2,fileSize,true); view.setUint32(6,0,true); view.setUint32(10,54,true);
+        view.setUint32(14,40,true); view.setInt32(18,w,true); view.setInt32(22,-h,true);
+        view.setUint16(26,1,true); view.setUint16(28,24,true); view.setUint32(30,0,true);
+        view.setUint32(34,pixBytes,true); view.setInt32(38,2835,true); view.setInt32(42,2835,true);
+        view.setUint32(46,0,true); view.setUint32(50,0,true);
 
-        // --- DIB header (BITMAPINFOHEADER, 40 bytes) ---
-        view.setUint32(14, 40,       true);   // header size
-        view.setInt32 (18, w,        true);   // width
-        view.setInt32 (22, -h,       true);   // height (negative = top-down)
-        view.setUint16(26, 1,        true);   // colour planes
-        view.setUint16(28, 24,       true);   // bits per pixel
-        view.setUint32(30, 0,        true);   // compression (none)
-        view.setUint32(34, pixBytes, true);   // pixel data size
-        view.setInt32 (38, 2835,     true);   // X ppm (~72 DPI)
-        view.setInt32 (42, 2835,     true);   // Y ppm
-        view.setUint32(46, 0,        true);   // colours in table
-        view.setUint32(50, 0,        true);   // important colours
-
-        // --- Pixel rows (top-down because of negative height) ---
         let off = 54;
-        for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-                const i = (y * w + x) * 4;  // RGBA source index
-                view.setUint8(off++, px[i + 2]);  // B
-                view.setUint8(off++, px[i + 1]);  // G
-                view.setUint8(off++, px[i    ]);  // R
+        for (let y=0; y<h; y++) {
+            for (let x=0; x<w; x++) {
+                const i=(y*w+x)*4;
+                view.setUint8(off++,px[i+2]); view.setUint8(off++,px[i+1]); view.setUint8(off++,px[i]);
             }
-            const pad = rowBytes - w * 3;
-            for (let p = 0; p < pad; p++) view.setUint8(off++, 0);
+            const pad=rowBytes-w*3;
+            for (let p=0;p<pad;p++) view.setUint8(off++,0);
         }
-
         return new Uint8Array(buf);
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
     buildPalette();
-
-    // Close all group panels on init (HTML may have one open by default)
     document.querySelectorAll('.group-panel').forEach(p => p.classList.add('hidden'));
-    document.querySelectorAll('.group-toggle').forEach(b => { b.classList.remove('active'); b.classList.remove('open'); });
+    document.querySelectorAll('.group-toggle').forEach(b => { b.classList.remove('active','open'); });
 
-    // White background, then load existing BMP
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
     const srcImg = new Image();
-    srcImg.onload = () => { ctx.drawImage(srcImg, 0, 0); };
+    srcImg.onload = () => { ctx.drawImage(srcImg,0,0); };
     srcImg.src = `/api/pages/${pageId}/content?type=bmp&t=${Date.now()}`;
 
     fitToScreen();
+    updateUndoBtn();
 })();

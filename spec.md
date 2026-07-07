@@ -199,8 +199,16 @@ Floats above the canvas in a compact collapsible strip. Organized into groups, e
 
 #### Saving BMP
 - "Save" button in editor toolbar (or Ctrl+S) serializes canvas to BMP format and PUTs to the API.
+- **Autosave** fires every 30 seconds if the canvas has unsaved changes.
 - BMP encoding done in JS (no external library — hand-rolled 24-bit uncompressed BMP writer, ~50 lines).
 - Dirty indicator shown when unsaved changes exist.
+
+#### Undo
+- "↩ Undo" button in the canvas toolbar (also Ctrl+Z).
+- Maintains a history of the last **50 actions** for the current session (in-memory only — history is lost on page reload).
+- Each action (stroke start, shape commit, flood fill, spray start) pushes a PNG snapshot of the canvas to the history stack before the action is applied.
+- History is capped at 50 entries; oldest entries are dropped when the cap is exceeded.
+- Undo button is disabled when history is empty.
 
 ---
 
