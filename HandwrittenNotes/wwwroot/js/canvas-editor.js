@@ -227,6 +227,10 @@
                 panOriginPX = panX;     panOriginPY = panY;
                 return;
             }
+            // If a previous stroke's pointerup hasn't arrived yet (quick successive
+            // strokes), cleanly terminate it before starting the next one so the
+            // late pointerup can't cancel the new stroke.
+            if (isDrawing) { stopSpray(); isDrawing = false; shapeSnap = null; }
         }
 
         const pos = canvasXY(e);
@@ -310,6 +314,8 @@
         } else {
             // Pen / mouse ─────────────────────────────────────────────────────
             if (isPanning) { isPanning = false; return; }
+            // Ignore a late pointerup that belongs to a previous stroke.
+            if (e.pointerId !== drawingPointerId) return;
         }
 
         drawingPointerId = -1;
