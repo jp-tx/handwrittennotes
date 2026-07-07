@@ -1,0 +1,15 @@
+# HandwrittenNotes — sample compose file using the pre-built image.
+# Copy this to docker-compose.yml, set your password, then run:
+#   docker compose up -d
+
+services:
+  handwrittennotes:
+    image: ghcr.io/jp-tx/handwrittennotes:latest
+    ports:
+      - "8080:8080"          # change the left side to use a different host port
+    environment:
+      - APP_PASSWORD=changeme   # ← set your password here
+      - DATA_PATH=/data
+    volumes:
+      - ./notes:/data           # ← host folder where notebooks are stored
+    restart: unless-stopped
