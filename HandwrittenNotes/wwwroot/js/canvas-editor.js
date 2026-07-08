@@ -588,4 +588,24 @@
 
     fitToScreen();
     updateUndoBtn();
+
+    // ── Browser-zoom reset button ─────────────────────────────────────────────
+    // Appears in the right gutter when iOS Safari zooms the page (scale > 1).
+    // Tapping it resets the viewport meta to snap the browser back to 1:1.
+    const zoomResetBtn = document.getElementById('zoomResetBtn');
+    if (zoomResetBtn && window.visualViewport) {
+        const onViewportChange = () => {
+            const zoomed = window.visualViewport.scale > 1.05;
+            zoomResetBtn.style.display = zoomed ? 'block' : 'none';
+        };
+        window.visualViewport.addEventListener('resize', onViewportChange);
+        window.visualViewport.addEventListener('scroll', onViewportChange);
+
+        zoomResetBtn.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            const meta = document.querySelector('meta[name=viewport]');
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            zoomResetBtn.style.display = 'none';
+        });
+    }
 })();
