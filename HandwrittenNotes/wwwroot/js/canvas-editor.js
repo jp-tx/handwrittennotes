@@ -297,7 +297,9 @@
 
     function onDown(e) {
         logEvent(e);
-        e.preventDefault();
+        // No e.preventDefault() — touch-action:none in CSS handles scroll/zoom.
+        // Calling preventDefault() on pointerdown causes iOS to stop dispatching
+        // events after ~5 rapid strokes (gesture-engine rate-limit on consumed inputs).
         viewport.setPointerCapture(e.pointerId);
 
         if (e.pointerType === 'touch') {
@@ -353,7 +355,7 @@
 
     function onMove(e) {
         logEvent(e);
-        e.preventDefault();
+        // touch-action:none in CSS handles scroll/zoom prevention — no preventDefault needed
 
         if (e.pointerType === 'touch') {
             pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
