@@ -475,8 +475,8 @@
                 const dist = Math.hypot(px - cx, py - cy);
                 if (dist >= r) continue;
                 const i = (py * w + px) * 4;
-                // Skip pixels that are near white (background)
-                if (d[i] > 220 && d[i+1] > 220 && d[i+2] > 220) continue;
+                // Skip pixels that are pure white (background)
+                if (d[i] === 255 && d[i+1] === 255 && d[i+2] === 255) continue;
                 const falloff  = 1 - dist / r;
                 const strength = 0.03 * falloff;
                 d[i]   = d[i]   - d[i]   * strength;
