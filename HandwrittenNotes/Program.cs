@@ -224,6 +224,55 @@ api.MapPost("/debug/log", async (HttpRequest request) =>
     return Results.Ok(new { filename });
 });
 
+// ── Recent pages ─────────────────────────────────────────────────────────────
+api.MapPost("/pages/{pageId}/touch", async (NotebookService svc, string pageId) =>
+{
+    var index = await svc.ReadIndexAsync();
+    var page  = index.Notebooks.SelectMany(n => n.Pages).FirstOrDefault(p => p.Id == pageId);
+    if (page is null) return Results.NotFound();
+    page.LastOpenedUtc = DateTime.UtcNow;
+    await svc.WriteIndexAsync(index);
+    return Results.Ok();
+});
+
+api.MapGet("/recent", async (NotebookService svc) =>
+{
+    var index  = await svc.ReadIndexAsync();
+    var recent = index.Notebooks
+        .SelectMany(nb => nb.Pages.Select(p => new { nb.Id, nb.Name, Page = p }))
+        .Where(x => x.Page.Type == "bmp" && x.Page.LastOpenedUtc.HasValue)
+        .OrderByDescending(x => x.Page.LastOpenedUtc)
+        .Take(6)
+        .Select(x => new {
+            notebookId   = x.Id,
+            notebookName = x.Name,
+            pageId       = x.Page.Id,
+            pageName     = x.Page.Name,
+        });
+    return Results.Ok(recent);
+});
+
+// ── Reorder ───────────────────────────────────────────────────────────────────
+api.MapPut("/notebooks/reorder", async (NotebookService svc, string[] ids) =>
+{
+    var index = await svc.ReadIndexAsync();
+    var dict  = index.Notebooks.ToDictionary(n => n.Id);
+    index.Notebooks = ids.Where(dict.ContainsKey).Select(id => dict[id]).ToList();
+    await svc.WriteIndexAsync(index);
+    return Results.Ok();
+});
+
+api.MapPut("/notebooks/{notebookId}/pages/reorder", async (NotebookService svc, string notebookId, string[] ids) =>
+{
+    var index = await svc.ReadIndexAsync();
+    var nb    = index.Notebooks.FirstOrDefault(n => n.Id == notebookId);
+    if (nb is null) return Results.NotFound();
+    var dict  = nb.Pages.ToDictionary(p => p.Id);
+    nb.Pages  = ids.Where(dict.ContainsKey).Select(id => dict[id]).ToList();
+    await svc.WriteIndexAsync(index);
+    return Results.Ok();
+});
+
 app.Run();
 
 record LoginRequest(string Password);

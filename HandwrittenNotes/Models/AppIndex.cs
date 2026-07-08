@@ -28,4 +28,5 @@ public class NotebookPage
     public string? Style { get; set; }
     public int? CanvasWidth { get; set; }
     public int? CanvasHeight { get; set; }
+    public DateTime? LastOpenedUtc { get; set; }
 }

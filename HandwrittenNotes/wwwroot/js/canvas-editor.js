@@ -625,6 +625,9 @@
     fitToScreen();
     updateUndoBtn();
 
+    // Record this page as recently opened (fire-and-forget)
+    fetch(`/api/pages/${pageId}/touch`, { method: 'POST' }).catch(() => {});
+
     // ── Browser-zoom reset button ─────────────────────────────────────────────
     // Appears in the right gutter when iOS Safari zooms the page (scale > 1).
     // Tapping it resets the viewport meta to snap the browser back to 1:1.

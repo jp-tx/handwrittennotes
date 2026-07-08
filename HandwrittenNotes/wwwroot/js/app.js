@@ -62,6 +62,109 @@
         });
     }
 
+    // ── Drag-and-drop ─────────────────────────────────────────────────────────
+    let drag = null;
+
+    function initDragHandle(handle, type, id, notebookId, getEl) {
+        handle.addEventListener('pointerdown', e => {
+            if (e.button > 0) return;
+            e.stopPropagation();
+            handle.setPointerCapture(e.pointerId);
+            const el = getEl();
+            const rect = el.getBoundingClientRect();
+            const ghost = el.cloneNode(true);
+            Object.assign(ghost.style, {
+                position: 'fixed', left: rect.left + 'px', top: rect.top + 'px',
+                width: rect.width + 'px', margin: '0', opacity: '0.8',
+                pointerEvents: 'none', zIndex: '9999',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            });
+            document.body.appendChild(ghost);
+            drag = { type, id, notebookId, el, ghost, offsetY: e.clientY - rect.top, insertBefore: undefined };
+            el.classList.add('drag-source');
+        });
+        handle.addEventListener('click', e => e.stopPropagation());
+    }
+
+    function getDragTargets() {
+        if (!drag) return [];
+        if (drag.type === 'notebook') return [...document.querySelectorAll('.nb-section')];
+        return [...document.querySelectorAll(`.nb-pages[data-nb-id="${drag.notebookId}"] .page-item`)];
+    }
+
+    function updateDropIndicator(clientY) {
+        document.querySelectorAll('.drag-drop-indicator').forEach(el => el.remove());
+        if (!drag) return;
+        const targets = getDragTargets().filter(t => t !== drag.el);
+        drag.insertBefore = null;
+        let placed = false;
+        for (const target of targets) {
+            const rect = target.getBoundingClientRect();
+            if (clientY < rect.top + rect.height / 2) {
+                const ind = document.createElement('div');
+                ind.className = 'drag-drop-indicator';
+                target.parentNode.insertBefore(ind, target);
+                drag.insertBefore = target;
+                placed = true;
+                break;
+            }
+        }
+        if (!placed && targets.length > 0) {
+            const ind = document.createElement('div');
+            ind.className = 'drag-drop-indicator';
+            const last = targets[targets.length - 1];
+            last.parentNode.insertBefore(ind, last.nextSibling);
+        }
+    }
+
+    function cancelDrag() {
+        if (!drag) return;
+        document.querySelectorAll('.drag-drop-indicator').forEach(el => el.remove());
+        drag.ghost.remove();
+        drag.el.classList.remove('drag-source');
+        drag = null;
+    }
+
+    async function commitDrop() {
+        if (!drag) return;
+        document.querySelectorAll('.drag-drop-indicator').forEach(el => el.remove());
+        drag.ghost.remove();
+        drag.el.classList.remove('drag-source');
+
+        const { type, id, notebookId, insertBefore } = drag;
+        drag = null;
+
+        if (insertBefore === undefined) return;
+
+        const targets = type === 'notebook'
+            ? [...document.querySelectorAll('.nb-section')]
+            : [...document.querySelectorAll(`.nb-pages[data-nb-id="${notebookId}"] .page-item`)];
+
+        const getId = el => type === 'notebook' ? el.dataset.nbId : el.dataset.pageId;
+        const ids = targets.filter(t => getId(t) !== id).map(getId);
+        const insertIdx = insertBefore ? ids.indexOf(getId(insertBefore)) : ids.length;
+        ids.splice(insertIdx === -1 ? ids.length : insertIdx, 0, id);
+
+        const url = type === 'notebook'
+            ? '/api/notebooks/reorder'
+            : `/api/notebooks/${notebookId}/pages/reorder`;
+
+        await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ids),
+        });
+        loadSidebar();
+    }
+
+    document.addEventListener('pointermove', e => {
+        if (!drag) return;
+        drag.ghost.style.top = (e.clientY - drag.offsetY) + 'px';
+        updateDropIndicator(e.clientY);
+    });
+    document.addEventListener('pointerup',     () => { if (drag) commitDrop(); });
+    document.addEventListener('pointercancel', () => { if (drag) cancelDrag(); });
+
     // ── Sidebar rendering ─────────────────────────────────────────────────────
     const listEl = document.getElementById('notebookList');
     const collapseState = {};
@@ -77,6 +180,11 @@
         item.className = 'page-item' + (active ? ' active' : '');
         item.dataset.pageId = pg.id;
 
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.textContent = '⠿';
+        dragHandle.title = 'Drag to reorder';
+
         const badge = document.createElement('span');
         badge.className = 'page-type-badge';
         badge.textContent = pg.type.toUpperCase();
@@ -87,6 +195,11 @@
 
         const actions = document.createElement('div');
         actions.className = 'page-actions';
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'btn-rename';
+        renameBtn.title = 'Rename page';
+        renameBtn.textContent = '✏';
 
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-danger';
@@ -100,7 +213,9 @@
             else loadSidebar();
         });
 
+        actions.appendChild(renameBtn);
         actions.appendChild(delBtn);
+        item.appendChild(dragHandle);
         item.appendChild(badge);
         item.appendChild(name);
         item.appendChild(actions);
@@ -109,8 +224,7 @@
             location.href = `/notebooks/${nb.id}/pages/${pg.id}`;
         });
 
-        name.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
+        function openRename() {
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'page-name-input';
@@ -118,14 +232,13 @@
             item.replaceChild(input, name);
             input.focus();
             input.select();
-
             async function commit() {
                 const val = input.value.trim();
                 if (val && val !== pg.name) {
                     await fetch(`/api/notebooks/${nb.id}/pages/${pg.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: val })
+                        body: JSON.stringify({ name: val }),
                     });
                 }
                 loadSidebar();
@@ -135,8 +248,12 @@
                 if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
                 if (ev.key === 'Escape') { input.removeEventListener('blur', commit); item.replaceChild(name, input); }
             });
-        });
+        }
 
+        renameBtn.addEventListener('click', (e) => { e.stopPropagation(); openRename(); });
+        name.addEventListener('dblclick', (e) => { e.stopPropagation(); openRename(); });
+
+        initDragHandle(dragHandle, 'page', pg.id, nb.id, () => item);
         return item;
     }
 
@@ -145,9 +262,15 @@
 
         const section = document.createElement('div');
         section.className = 'nb-section';
+        section.dataset.nbId = nb.id;
 
         const header = document.createElement('div');
         header.className = 'nb-header';
+
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.textContent = '⠿';
+        dragHandle.title = 'Drag to reorder';
 
         const toggle = document.createElement('span');
         toggle.className = 'nb-toggle' + (open ? ' open' : '');
@@ -159,6 +282,11 @@
 
         const actions = document.createElement('div');
         actions.className = 'nb-actions';
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'btn-rename';
+        renameBtn.title = 'Rename notebook';
+        renameBtn.textContent = '✏';
 
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-danger';
@@ -174,7 +302,9 @@
             else loadSidebar();
         });
 
+        actions.appendChild(renameBtn);
         actions.appendChild(delBtn);
+        header.appendChild(dragHandle);
         header.appendChild(toggle);
         header.appendChild(nameEl);
         header.appendChild(actions);
@@ -182,10 +312,10 @@
 
         const pagesWrap = document.createElement('div');
         pagesWrap.className = 'nb-pages' + (open ? '' : ' hidden');
+        pagesWrap.dataset.nbId = nb.id;
 
         nb.pages.forEach(pg => pagesWrap.appendChild(renderPage(nb, pg)));
 
-        // Add page row
         const addRow = document.createElement('div');
         addRow.className = 'add-page-row';
         const addBtn = document.createElement('button');
@@ -197,9 +327,9 @@
 
         section.appendChild(pagesWrap);
 
-        // Toggle collapse
         header.addEventListener('click', (e) => {
             if (e.target.closest('.nb-actions')) return;
+            if (e.target.closest('.drag-handle')) return;
             if (e.target === nameEl && nameEl.isContentEditable) return;
             const isOpen = !pagesWrap.classList.contains('hidden');
             pagesWrap.classList.toggle('hidden', isOpen);
@@ -207,9 +337,7 @@
             collapseState[nb.id] = !isOpen;
         });
 
-        // Rename on double-click
-        nameEl.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
+        function openRename() {
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'nb-name-input';
@@ -217,14 +345,13 @@
             header.replaceChild(input, nameEl);
             input.focus();
             input.select();
-
             async function commit() {
                 const val = input.value.trim();
                 if (val && val !== nb.name) {
                     await fetch(`/api/notebooks/${nb.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: val })
+                        body: JSON.stringify({ name: val }),
                     });
                 }
                 loadSidebar();
@@ -234,8 +361,12 @@
                 if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
                 if (ev.key === 'Escape') { input.removeEventListener('blur', commit); header.replaceChild(nameEl, input); }
             });
-        });
+        }
 
+        renameBtn.addEventListener('click', (e) => { e.stopPropagation(); openRename(); });
+        nameEl.addEventListener('dblclick', (e) => { e.stopPropagation(); openRename(); });
+
+        initDragHandle(dragHandle, 'notebook', nb.id, null, () => section);
         return section;
     }
 
@@ -251,7 +382,6 @@
 
         let selectedType = 'bmp';
 
-        // ── Type toggle (BMP / TXT) ───────────────────────────────────────────
         const typeRow = document.createElement('div');
         typeRow.className = 'add-page-form-actions';
 
@@ -263,7 +393,6 @@
         txtBtn.className = 'btn-type';
         txtBtn.textContent = 'TXT';
 
-        // ── Style dropdown (BMP only) ─────────────────────────────────────────
         const styleSelect = document.createElement('select');
         styleSelect.className = 'add-page-style-select';
 
@@ -340,7 +469,7 @@
             const resp  = await fetch(`/api/notebooks/${nb.id}/pages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type, style })
+                body: JSON.stringify({ name, type, style }),
             });
             if (resp.ok) {
                 const page = await resp.json();
@@ -370,6 +499,36 @@
         } catch (e) { /* not logged in or error */ }
     }
 
+    // ── Recent pages grid (home page) ─────────────────────────────────────────
+    async function loadRecentPages() {
+        const grid = document.getElementById('recentGrid');
+        if (!grid) return;
+        try {
+            const r = await fetch('/api/recent');
+            if (!r.ok) return;
+            const pages = await r.json();
+            grid.innerHTML = '';
+            if (pages.length === 0) {
+                grid.innerHTML = '<span class="recent-empty">No pages opened yet. Open a canvas page to see it here.</span>';
+                return;
+            }
+            pages.forEach(p => {
+                const card = document.createElement('a');
+                card.className = 'recent-card';
+                card.href = `/notebooks/${p.notebookId}/pages/${p.pageId}`;
+                card.innerHTML = `
+                    <div class="recent-thumb">
+                        <img src="/api/pages/${p.pageId}/content?type=bmp" alt="" loading="lazy" />
+                    </div>
+                    <div class="recent-info">
+                        <span class="recent-page-name">${p.pageName}</span>
+                        <span class="recent-nb-name">${p.notebookName}</span>
+                    </div>`;
+                grid.appendChild(card);
+            });
+        } catch (e) { /* not logged in */ }
+    }
+
     // ── New Notebook ──────────────────────────────────────────────────────────
     const newNbBtn = document.getElementById('newNotebookBtn');
     if (newNbBtn) {
@@ -379,11 +538,12 @@
             const resp = await fetch('/api/notebooks', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
+                body: JSON.stringify({ name }),
             });
             if (resp.ok) loadSidebar();
         });
     }
 
     loadSidebar();
+    loadRecentPages();
 })();
