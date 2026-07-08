@@ -444,7 +444,7 @@
                 const dist = Math.hypot(px - cx, py - cy);
                 if (dist >= r) continue;
                 const falloff  = 1 - dist / r;
-                const strength = 0.03 * falloff;
+                const strength = 0.06 * falloff;
                 const i = (py * w + px) * 4;
                 d[i]   = d[i]   + (255 - d[i])   * strength;
                 d[i+1] = d[i+1] + (255 - d[i+1]) * strength;
@@ -455,7 +455,8 @@
     }
 
     // ── Darken ────────────────────────────────────────────────────────────────
-    // Mirror of applyLighten — nudges each pixel toward black instead of white.
+    // Nudges non-background pixels toward black. Skips pixels near white so
+    // only existing ink lines are affected, not the page background.
     function applyDarken(x, y) {
         const r  = Math.max(brushSize * 4, 10);
         const x0 = Math.max(0, Math.round(x - r));
@@ -473,9 +474,11 @@
             for (let px = 0; px < w; px++) {
                 const dist = Math.hypot(px - cx, py - cy);
                 if (dist >= r) continue;
+                const i = (py * w + px) * 4;
+                // Skip pixels that are near white (background)
+                if (d[i] > 220 && d[i+1] > 220 && d[i+2] > 220) continue;
                 const falloff  = 1 - dist / r;
                 const strength = 0.03 * falloff;
-                const i = (py * w + px) * 4;
                 d[i]   = d[i]   - d[i]   * strength;
                 d[i+1] = d[i+1] - d[i+1] * strength;
                 d[i+2] = d[i+2] - d[i+2] * strength;
