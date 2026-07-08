@@ -38,6 +38,6 @@ public class LoginModel : PageModel
             ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
         });
 
-        return Redirect(string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl);
+        return Redirect("/");
     }
 }
