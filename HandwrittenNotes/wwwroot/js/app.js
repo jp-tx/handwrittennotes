@@ -9,6 +9,14 @@
         return tag === 'TEXTAREA' || tag === 'INPUT' || el.isContentEditable;
     }
     document.addEventListener('contextmenu', e => { if (!isTextTarget(e.target)) e.preventDefault(); });
+
+    // Prevent iOS gesture-based zoom (pinch, double-tap with pen/finger).
+    // viewport meta user-scalable=no is ignored since iOS 10; JS is the only
+    // reliable block. gesturestart/gesturechange are WebKit-only events that
+    // fire before the zoom animation begins.
+    document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gestureend',    e => e.preventDefault(), { passive: false });
 })();
 
 (function () {
