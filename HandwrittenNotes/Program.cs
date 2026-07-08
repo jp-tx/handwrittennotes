@@ -215,6 +215,15 @@ api.MapPut("/settings", async (NotebookService svc, AppSettings settings) =>
     return Results.Ok(index.Settings);
 });
 
+api.MapPost("/debug/log", async (HttpRequest request) =>
+{
+    using var reader = new StreamReader(request.Body);
+    var content = await reader.ReadToEndAsync();
+    var filename = $"debug-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.log";
+    await File.WriteAllTextAsync(Path.Combine(dataPath, filename), content);
+    return Results.Ok(new { filename });
+});
+
 app.Run();
 
 record LoginRequest(string Password);
