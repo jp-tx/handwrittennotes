@@ -407,11 +407,14 @@
         // Copy source region to the off-screen canvas
         smearCtx.putImageData(ctx.getImageData(sx, sy, sw, sh), 0, 0);
 
-        // Composite it at the destination with partial opacity —
-        // putImageData ignores globalAlpha so we route through drawImage
+        // Composite it at the destination with partial opacity, clipped to a circle.
+        // putImageData ignores globalAlpha so we route through drawImage.
         const dx = Math.round(toX - r);
         const dy = Math.round(toY - r);
         ctx.save();
+        ctx.beginPath();
+        ctx.arc(toX, toY, r, 0, Math.PI * 2);
+        ctx.clip();
         ctx.globalAlpha = 0.72;
         ctx.drawImage(smearCanvas, 0, 0, sw, sh, dx, dy, sw, sh);
         ctx.restore();
