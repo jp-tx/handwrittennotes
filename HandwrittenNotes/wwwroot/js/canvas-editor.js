@@ -443,8 +443,8 @@
             for (let px = 0; px < w; px++) {
                 const dist = Math.hypot(px - cx, py - cy);
                 if (dist >= r) continue;
-                const falloff  = 1 - dist / r;       // full effect at centre
-                const strength = 0.22 * falloff;      // gentle per-pass nudge
+                const falloff  = 1 - dist / r;
+                const strength = 0.03 * falloff;
                 const i = (py * w + px) * 4;
                 d[i]   = d[i]   + (255 - d[i])   * strength;
                 d[i+1] = d[i+1] + (255 - d[i+1]) * strength;
@@ -474,7 +474,7 @@
                 const dist = Math.hypot(px - cx, py - cy);
                 if (dist >= r) continue;
                 const falloff  = 1 - dist / r;
-                const strength = 0.22 * falloff;
+                const strength = 0.03 * falloff;
                 const i = (py * w + px) * 4;
                 d[i]   = d[i]   - d[i]   * strength;
                 d[i+1] = d[i+1] - d[i+1] * strength;
