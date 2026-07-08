@@ -262,6 +262,7 @@
         if (tool === 'spray')   { startSpray(pos.x, pos.y); return; }
         if (tool === 'smear')   { return; }
         if (tool === 'lighten') { applyLighten(pos.x, pos.y); return; }
+        if (tool === 'darken')  { applyDarken(pos.x, pos.y);  return; }
 
         applyDrawStyle(e.pressure || 0.5);
         ctx.beginPath();
@@ -299,6 +300,8 @@
             applySmear(lastX, lastY, pos.x, pos.y);
         } else if (tool === 'lighten') {
             applyLighten(pos.x, pos.y);
+        } else if (tool === 'darken') {
+            applyDarken(pos.x, pos.y);
         } else if (tool === 'pen' || tool === 'eraser') {
             applyDrawStyle(e.pressure || 0.5);
             ctx.beginPath();
@@ -446,6 +449,36 @@
                 d[i]   = d[i]   + (255 - d[i])   * strength;
                 d[i+1] = d[i+1] + (255 - d[i+1]) * strength;
                 d[i+2] = d[i+2] + (255 - d[i+2]) * strength;
+            }
+        }
+        ctx.putImageData(imgData, x0, y0);
+    }
+
+    // ── Darken ────────────────────────────────────────────────────────────────
+    // Mirror of applyLighten — nudges each pixel toward black instead of white.
+    function applyDarken(x, y) {
+        const r  = Math.max(brushSize * 4, 10);
+        const x0 = Math.max(0, Math.round(x - r));
+        const y0 = Math.max(0, Math.round(y - r));
+        const x1 = Math.min(canvasW, Math.round(x + r));
+        const y1 = Math.min(canvasH, Math.round(y + r));
+        const w  = x1 - x0, h = y1 - y0;
+        if (w <= 0 || h <= 0) return;
+
+        const imgData = ctx.getImageData(x0, y0, w, h);
+        const d = imgData.data;
+        const cx = x - x0, cy = y - y0;
+
+        for (let py = 0; py < h; py++) {
+            for (let px = 0; px < w; px++) {
+                const dist = Math.hypot(px - cx, py - cy);
+                if (dist >= r) continue;
+                const falloff  = 1 - dist / r;
+                const strength = 0.22 * falloff;
+                const i = (py * w + px) * 4;
+                d[i]   = d[i]   - d[i]   * strength;
+                d[i+1] = d[i+1] - d[i+1] * strength;
+                d[i+2] = d[i+2] - d[i+2] * strength;
             }
         }
         ctx.putImageData(imgData, x0, y0);
