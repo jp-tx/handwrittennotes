@@ -212,91 +212,9 @@
     viewport.addEventListener('pointercancel', onUp);
     viewport.addEventListener('contextmenu',   e => e.preventDefault());
 
-    // ── Debug event recorder ──────────────────────────────────────────────────
-    let isRecording = false;
-    const eventLog  = [];
-    let recStart    = 0;
-    let moveSeq     = 0;  // increments each move; used to sample 1-in-5
 
-    function logEvent(e) {
-        if (!isRecording) return;
-        // Log all down/up/cancel; sample every 5th move to avoid flooding
-        if (e.type === 'pointermove') {
-            moveSeq++;
-            if (moveSeq % 5 !== 1) return;
-        } else {
-            moveSeq = 0;
-        }
-        eventLog.push({
-            t:    Date.now() - recStart,
-            ev:   e.type,
-            id:   e.pointerId,
-            pt:   e.pointerType,
-            x:    Math.round(e.clientX),
-            y:    Math.round(e.clientY),
-            pr:   Math.round(e.pressure * 100) / 100,
-            btn:  e.button,
-            btns: e.buttons,
-            drw:  isDrawing,
-            dId:  drawingPointerId,
-            ptrs: pointers.size,
-        });
-        const statusEl = document.getElementById('dbgStatus');
-        if (statusEl) statusEl.textContent = `${eventLog.length} ev`;
-    }
-
-    (function initDebugButtons() {
-        const recBtn  = document.getElementById('dbgRecord');
-        const stopBtn = document.getElementById('dbgStop');
-        const sendBtn = document.getElementById('dbgSend');
-        const statusEl = document.getElementById('dbgStatus');
-
-        recBtn?.addEventListener('click', () => {
-            eventLog.length = 0;
-            recStart = Date.now();
-            moveSeq  = 0;
-            isRecording = true;
-            recBtn.disabled  = true;
-            stopBtn.disabled = false;
-            sendBtn.disabled = true;
-            if (statusEl) statusEl.textContent = 'Recording…';
-        });
-
-        stopBtn?.addEventListener('click', () => {
-            isRecording = false;
-            recBtn.disabled  = false;
-            stopBtn.disabled = true;
-            sendBtn.disabled = eventLog.length === 0;
-            if (statusEl) statusEl.textContent = `${eventLog.length} ev`;
-        });
-
-        sendBtn?.addEventListener('click', async () => {
-            sendBtn.disabled = true;
-            if (statusEl) statusEl.textContent = 'Sending…';
-            try {
-                const meta = { t: 0, ev: '__meta__', canvasW, canvasH, ua: navigator.userAgent };
-                const lines = [JSON.stringify(meta), ...eventLog.map(e => JSON.stringify(e))];
-                const resp  = await fetch('/api/debug/log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: lines.join('\n'),
-                });
-                if (resp.ok) {
-                    const { filename } = await resp.json();
-                    if (statusEl) statusEl.textContent = `Saved: ${filename}`;
-                } else {
-                    if (statusEl) statusEl.textContent = 'Send failed';
-                    sendBtn.disabled = false;
-                }
-            } catch {
-                if (statusEl) statusEl.textContent = 'Error';
-                sendBtn.disabled = false;
-            }
-        });
-    })();
 
     function onDown(e) {
-        logEvent(e);
         // No e.preventDefault() — touch-action:none in CSS handles scroll/zoom.
         // Calling preventDefault() on pointerdown causes iOS to stop dispatching
         // events after ~5 rapid strokes (gesture-engine rate-limit on consumed inputs).
@@ -354,7 +272,6 @@
     }
 
     function onMove(e) {
-        logEvent(e);
         // touch-action:none in CSS handles scroll/zoom prevention — no preventDefault needed
 
         if (e.pointerType === 'touch') {
@@ -400,7 +317,6 @@
     }
 
     function onUp(e) {
-        logEvent(e);
         if (e.pointerType === 'touch') {
             pointers.delete(e.pointerId);
             lastPinchDist = 0; lastCentroid = null;
