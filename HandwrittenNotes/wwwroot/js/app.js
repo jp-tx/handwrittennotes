@@ -9,6 +9,13 @@
         return tag === 'TEXTAREA' || tag === 'INPUT' || el.isContentEditable;
     }
     document.addEventListener('contextmenu', e => { if (!isTextTarget(e.target)) e.preventDefault(); });
+
+    // Block all browser-native zoom (double-tap or pinch by pen or finger).
+    // Our JS pinch zoom on the canvas uses pointer events and is unaffected.
+    // iOS ignores user-scalable=no since iOS 10, so this JS block is required.
+    document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gestureend',    e => e.preventDefault(), { passive: false });
 })();
 
 (function () {
