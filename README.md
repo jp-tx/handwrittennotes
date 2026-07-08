@@ -4,3 +4,5 @@ would be great for classroom notebook or a drawing pad
 docker compose, configure in seconds
 
 Basically just a stack of real world notebooks in digital form, all run off a docker compose, all stored in your data folder, fast and responsive, webapp works perfectly on chrome/ff/ios/android
+
+on ios disable scribble to get writing and sketching to work in safari
